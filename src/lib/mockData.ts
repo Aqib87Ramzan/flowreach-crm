@@ -48,9 +48,9 @@ const defaultSMS: SMSRecord[] = [
 ];
 
 const defaultEmails: EmailRecord[] = [
-  { id: '1', leadName: 'Sarah Johnson', subject: 'Welcome to FlowReach!', status: 'Sent', timeSent: '2026-03-28 10:00' },
-  { id: '2', leadName: 'James Wilson', subject: 'Your Annual Plan Confirmation', status: 'Sent', timeSent: '2026-03-25 16:00' },
-  { id: '3', leadName: 'David Kim', subject: 'Special Pricing Just For You', status: 'Sent', timeSent: '2026-03-23 11:30' },
+  { id: '1', leadName: 'Ahmed Raza', subject: 'Welcome to FlowReach!', status: 'Sent', timeSent: '2026-03-28 10:00' },
+  { id: '2', leadName: 'Ayesha Malik', subject: 'Your Annual Plan Confirmation', status: 'Sent', timeSent: '2026-03-25 16:00' },
+  { id: '3', leadName: 'Zainab Iqbal', subject: 'Special Pricing Just For You', status: 'Sent', timeSent: '2026-03-23 11:30' },
 ];
 
 function getFromStorage<T>(key: string, defaults: T[]): T[] {
