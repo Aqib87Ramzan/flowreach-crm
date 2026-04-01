@@ -31,20 +31,20 @@ const EMAIL_KEY = 'flowreach_emails';
 const AUTH_KEY = 'flowreach_auth';
 
 const defaultLeads: Lead[] = [
-  { id: '1', name: 'Sarah Johnson', email: 'sarah@example.com', phone: '+1 555-0101', source: 'Facebook', status: 'New', notes: 'Interested in premium plan', dateAdded: '2026-03-28' },
-  { id: '2', name: 'Michael Chen', email: 'michael@example.com', phone: '+1 555-0102', source: 'Instagram', status: 'Contacted', notes: 'Follow up next week', dateAdded: '2026-03-27' },
-  { id: '3', name: 'Emily Rodriguez', email: 'emily@example.com', phone: '+1 555-0103', source: 'Website', status: 'Replied', notes: 'Requested demo', dateAdded: '2026-03-26' },
-  { id: '4', name: 'James Wilson', email: 'james@example.com', phone: '+1 555-0104', source: 'LinkedIn', status: 'Converted', notes: 'Signed up for annual plan', dateAdded: '2026-03-25' },
-  { id: '5', name: 'Olivia Brown', email: 'olivia@example.com', phone: '+1 555-0105', source: 'Facebook', status: 'New', notes: '', dateAdded: '2026-03-24' },
-  { id: '6', name: 'David Kim', email: 'david@example.com', phone: '+1 555-0106', source: 'Google Ads', status: 'Contacted', notes: 'Price sensitive', dateAdded: '2026-03-23' },
-  { id: '7', name: 'Sophia Martinez', email: 'sophia@example.com', phone: '+1 555-0107', source: 'Instagram', status: 'New', notes: 'Found through influencer campaign', dateAdded: '2026-03-22' },
-  { id: '8', name: 'Daniel Lee', email: 'daniel@example.com', phone: '+1 555-0108', source: 'Referral', status: 'Replied', notes: 'Referred by James Wilson', dateAdded: '2026-03-21' },
+  { id: '1', name: 'Ahmed Raza', email: 'ahmed.raza@example.pk', phone: '+92 300 1234567', source: 'Facebook', status: 'New', notes: 'Interested in premium plan', dateAdded: '2026-03-28' },
+  { id: '2', name: 'Fatima Khan', email: 'fatima.khan@example.pk', phone: '+92 321 9876543', source: 'Instagram', status: 'Contacted', notes: 'Follow up next week', dateAdded: '2026-03-27' },
+  { id: '3', name: 'Ali Hassan', email: 'ali.hassan@example.pk', phone: '+92 333 4567890', source: 'Website', status: 'Replied', notes: 'Requested demo', dateAdded: '2026-03-26' },
+  { id: '4', name: 'Ayesha Malik', email: 'ayesha.malik@example.pk', phone: '+92 345 6789012', source: 'LinkedIn', status: 'Converted', notes: 'Signed up for annual plan', dateAdded: '2026-03-25' },
+  { id: '5', name: 'Usman Tariq', email: 'usman.tariq@example.pk', phone: '+92 312 3456789', source: 'Facebook', status: 'New', notes: '', dateAdded: '2026-03-24' },
+  { id: '6', name: 'Zainab Iqbal', email: 'zainab.iqbal@example.pk', phone: '+92 301 7654321', source: 'Google Ads', status: 'Contacted', notes: 'Price sensitive', dateAdded: '2026-03-23' },
+  { id: '7', name: 'Bilal Shahid', email: 'bilal.shahid@example.pk', phone: '+92 322 8901234', source: 'Instagram', status: 'New', notes: 'Found through influencer campaign', dateAdded: '2026-03-22' },
+  { id: '8', name: 'Sana Noor', email: 'sana.noor@example.pk', phone: '+92 334 5678901', source: 'Referral', status: 'Replied', notes: 'Referred by Ayesha Malik', dateAdded: '2026-03-21' },
 ];
 
 const defaultSMS: SMSRecord[] = [
-  { id: '1', leadName: 'Sarah Johnson', message: 'Hi Sarah! Thanks for your interest in FlowReach.', status: 'Sent', timeSent: '2026-03-28 10:30' },
-  { id: '2', leadName: 'Michael Chen', message: 'Hi Michael, just following up on our conversation.', status: 'Sent', timeSent: '2026-03-27 14:15' },
-  { id: '3', leadName: 'Emily Rodriguez', message: 'Emily, your demo is scheduled for tomorrow!', status: 'Sent', timeSent: '2026-03-26 09:00' },
+  { id: '1', leadName: 'Ahmed Raza', message: 'Hi Ahmed! Thanks for your interest in FlowReach.', status: 'Sent', timeSent: '2026-03-28 10:30' },
+  { id: '2', leadName: 'Fatima Khan', message: 'Hi Fatima, just following up on our conversation.', status: 'Sent', timeSent: '2026-03-27 14:15' },
+  { id: '3', leadName: 'Ali Hassan', message: 'Ali, your demo is scheduled for tomorrow!', status: 'Sent', timeSent: '2026-03-26 09:00' },
 ];
 
 const defaultEmails: EmailRecord[] = [
