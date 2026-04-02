@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Users, MessageSquare, Mail, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const features = [
   { icon: Users, title: 'Lead Management', desc: 'Organize and track all your leads in one place' },
@@ -12,6 +14,17 @@ const features = [
 export default function Landing() {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) navigate('/dashboard');
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate('/dashboard');
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
