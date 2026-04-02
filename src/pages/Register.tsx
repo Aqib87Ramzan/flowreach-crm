@@ -29,11 +29,28 @@ export default function Register() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    register(email, password);
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+    toast.success('Check your email to confirm your account!');
+    navigate('/login');
+    setLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error('Google sign-in failed');
+      return;
+    }
+    if (result.redirected) return;
     toast.success('Account created successfully!');
     navigate('/dashboard');
-    setLoading(false);
   };
 
   return (
