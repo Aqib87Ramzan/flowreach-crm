@@ -1,6 +1,6 @@
 import { LayoutDashboard, Users, MessageSquare, Mail, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { logout } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -13,8 +13,8 @@ export default function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/');
   };
 
