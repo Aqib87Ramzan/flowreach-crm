@@ -20,11 +20,28 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    login(email, password);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
     toast.success('Welcome back!');
     navigate('/dashboard');
     setLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error('Google sign-in failed');
+      return;
+    }
+    if (result.redirected) return;
+    toast.success('Welcome back!');
+    navigate('/dashboard');
   };
 
   return (
