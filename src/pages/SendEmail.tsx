@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { getLeads, getEmailHistory, addEmail } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,20 +37,44 @@ export default function SendEmail() {
     }
     setLoading(true);
     const lead = leads.find(l => l.id === selectedLead)!;
+    const personalizedSubject = subject.replace(/\{\{name\}\}/g, lead.name).replace(/\{\{email\}\}/g, lead.email);
+    const personalizedBody = body.replace(/\{\{name\}\}/g, lead.name).replace(/\{\{email\}\}/g, lead.email);
 
-    await new Promise(r => setTimeout(r, 1000));
-    addEmail({
-      leadName: lead.name,
-      subject: subject.replace(/\{\{name\}\}/g, lead.name),
-      status: 'Sent',
-      timeSent: new Date().toLocaleString(),
-    });
-    setHistory(getEmailHistory());
-    setSubject('');
-    setBody('');
-    setSelectedLead('');
-    setLoading(false);
-    toast.success(`Email sent to ${lead.name}`);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: lead.email,
+          subject: personalizedSubject,
+          html: personalizedBody,
+        },
+      });
+
+      if (error) throw error;
+
+      addEmail({
+        leadName: lead.name,
+        subject: personalizedSubject,
+        status: 'Sent',
+        timeSent: new Date().toLocaleString(),
+      });
+      setHistory(getEmailHistory());
+      setSubject('');
+      setBody('');
+      setSelectedLead('');
+      toast.success(`Email sent to ${lead.name} via Mailtrap`);
+    } catch (err: any) {
+      console.error('Email send error:', err);
+      addEmail({
+        leadName: lead.name,
+        subject: personalizedSubject,
+        status: 'Failed',
+        timeSent: new Date().toLocaleString(),
+      });
+      setHistory(getEmailHistory());
+      toast.error(`Failed to send email: ${err.message || 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
