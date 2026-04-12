@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,32 +20,30 @@ serve(async (req) => {
       });
     }
 
-    const MAILTRAP_USER = Deno.env.get("MAILTRAP_SMTP_USER");
-    const MAILTRAP_PASS = Deno.env.get("MAILTRAP_SMTP_PASS");
-
-    if (!MAILTRAP_USER || !MAILTRAP_PASS) {
-      throw new Error("MAILTRAP_SMTP_USER or MAILTRAP_SMTP_PASS is not configured");
+    const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
+    if (!SENDGRID_API_KEY) {
+      throw new Error("SENDGRID_API_KEY is not configured");
     }
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: "sandbox.smtp.mailtrap.io",
-        port: 2525,
-        auth: {
-          username: MAILTRAP_USER,
-          password: MAILTRAP_PASS,
-        },
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SENDGRID_API_KEY}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: "noreply@flowreach.app", name: "FlowReach" },
+        subject,
+        content: [{ type: "text/html", value: html }],
+      }),
     });
 
-    await client.send({
-      from: "FlowReach <noreply@flowreach.app>",
-      to,
-      subject,
-      html,
-    });
-
-    await client.close();
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("SendGrid error:", res.status, errorText);
+      throw new Error(`SendGrid API error: ${res.status}`);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
