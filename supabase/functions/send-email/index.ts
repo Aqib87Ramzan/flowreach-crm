@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,36 +21,34 @@ serve(async (req) => {
       });
     }
 
-    const MAILTRAP_API_TOKEN = Deno.env.get("MAILTRAP_API_TOKEN");
-    if (!MAILTRAP_API_TOKEN) {
-      throw new Error("MAILTRAP_API_TOKEN is not configured");
+    const MAILTRAP_USER = Deno.env.get("MAILTRAP_SMTP_USER");
+    const MAILTRAP_PASS = Deno.env.get("MAILTRAP_SMTP_PASS");
+
+    if (!MAILTRAP_USER || !MAILTRAP_PASS) {
+      throw new Error("MAILTRAP_SMTP_USER or MAILTRAP_SMTP_PASS is not configured");
     }
 
-    const response = await fetch("https://send.api.mailtrap.io/api/send", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${MAILTRAP_API_TOKEN}`,
-        "Content-Type": "application/json",
+    const client = new SMTPClient({
+      connection: {
+        hostname: "sandbox.smtp.mailtrap.io",
+        port: 2525,
+        auth: {
+          username: MAILTRAP_USER,
+          password: MAILTRAP_PASS,
+        },
       },
-      body: JSON.stringify({
-        from: { email: "noreply@flowreach.app", name: "FlowReach" },
-        to: [{ email: to }],
-        subject,
-        html,
-      }),
     });
 
-    const data = await response.json();
+    await client.send({
+      from: "FlowReach <noreply@flowreach.app>",
+      to,
+      subject,
+      html,
+    });
 
-    if (!response.ok) {
-      console.error("Mailtrap API error:", JSON.stringify(data));
-      return new Response(JSON.stringify({ error: "Failed to send email", details: data }), {
-        status: response.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    await client.close();
 
-    return new Response(JSON.stringify({ success: true, data }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
