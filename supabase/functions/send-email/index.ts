@@ -33,7 +33,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email: to }] }],
-        from: { email: "noreply@flowreach.app", name: "FlowReach" },
+        from: { email: "aqib.creates@gmail.com", name: "FlowReach" },
         subject,
         content: [{ type: "text/html", value: html }],
       }),
