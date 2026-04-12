@@ -61,7 +61,7 @@ export default function SendEmail() {
       setSubject('');
       setBody('');
       setSelectedLead('');
-      toast.success(`Email sent to ${lead.name} via Mailtrap`);
+      toast.success(`Email sent to ${lead.name} via SendGrid`);
     } catch (err: any) {
       console.error('Email send error:', err);
       addEmail({
