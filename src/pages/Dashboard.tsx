@@ -1,8 +1,28 @@
-import { Users, MessageSquare, Mail, Megaphone } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Users,
+  MessageSquare,
+  Mail,
+  Megaphone,
+  Copy,
+  Zap,
+  AlertCircle,
+  CheckCircle2,
+  MessageCircle,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import StatCard from '@/components/StatCard';
 import { getLeads, getSMSHistory, getEmailHistory } from '@/lib/mockData';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useWebhook } from '@/hooks/use-webhook';
+import { errorHandlingService } from '@/services/ErrorHandlingService';
+import { FailedMessage } from '@/types/errors';
+import { toast } from 'sonner';
+import { Workflow } from '@/types/workflow';
+import { Task } from '@/types/communications';
 
 const statusColor: Record<string, string> = {
   New: 'bg-primary/10 text-primary',
@@ -12,9 +32,117 @@ const statusColor: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { testWebhook } = useWebhook();
+
+  // State
+  const [activeWorkflow, setActiveWorkflow] = useState<Workflow | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [stats, setStats] = useState({
+    activeWorkflows: 0,
+    failedMessages: 0,
+    pendingTasks: 0,
+    totalConversations: 0,
+  });
+  const [failedMessages, setFailedMessages] = useState<FailedMessage[]>([]);
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const leads = getLeads();
   const sms = getSMSHistory();
   const emails = getEmailHistory();
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Load active workflow
+      const { data: workflow } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (workflow) {
+        setActiveWorkflow(workflow);
+      }
+
+      // Load stats
+      // 1. Active workflows count
+      const { count: activeCount } = await supabase
+        .from('workflows')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      // 2. Failed messages count
+      const failedCount = await errorHandlingService.getFailedMessagesCount();
+
+      // 3. Pending tasks count
+      const { count: tasksCount } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'pending');
+
+      // 4. Total conversations count
+      const { data: uniqueLeads } = await supabase
+        .from('messages')
+        .select('lead_id', { count: 'exact' })
+        .neq('lead_id', null);
+
+      const uniqueLeadCount = uniqueLeads
+        ? new Set(uniqueLeads.map((m: any) => m.lead_id)).size
+        : 0;
+
+      setStats({
+        activeWorkflows: activeCount || 0,
+        failedMessages: failedCount,
+        pendingTasks: tasksCount || 0,
+        totalConversations: uniqueLeadCount,
+      });
+
+      // Load failed messages
+      const failed = await errorHandlingService.getFailedMessagesForDay(1);
+      setFailedMessages(failed.slice(0, 5));
+
+      // Load recent tasks
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      setRecentTasks(tasks || []);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const handleCopyWebhook = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success('Webhook URL copied to clipboard');
+  };
+
+  const handleTestWebhook = async () => {
+    if (!activeWorkflow?.webhook_url) return;
+
+    setTesting(true);
+    try {
+      await testWebhook(activeWorkflow.webhook_url);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -24,12 +152,265 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Welcome back to FlowReach</p>
         </div>
 
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total Leads" value={leads.length} icon={Users} />
-          <StatCard title="SMS Sent" value={sms.length} icon={MessageSquare} color="bg-success" />
-          <StatCard title="Emails Sent" value={emails.length} icon={Mail} color="bg-warning" />
-          <StatCard title="Active Campaigns" value={2} icon={Megaphone} color="bg-destructive" />
+          <StatCard
+            title="Active Workflows"
+            value={stats.activeWorkflows}
+            icon={Zap}
+            color="bg-primary"
+          />
+          <StatCard
+            title="Failed Messages"
+            value={stats.failedMessages}
+            icon={AlertCircle}
+            color="bg-destructive"
+          />
+          <StatCard
+            title="Pending Tasks"
+            value={stats.pendingTasks}
+            icon={CheckCircle2}
+            color="bg-warning"
+          />
+          <StatCard
+            title="Conversations"
+            value={stats.totalConversations}
+            icon={MessageCircle}
+            color="bg-success"
+          />
+          <StatCard
+            title="SMS Sent"
+            value={sms.length}
+            icon={MessageSquare}
+            color="bg-info"
+          />
+          <StatCard
+            title="Emails Sent"
+            value={emails.length}
+            icon={Mail}
+            color="bg-info"
+          />
+          <StatCard
+            title="Active Campaigns"
+            value={2}
+            icon={Megaphone}
+            color="bg-purple"
+          />
         </div>
+
+        {/* Webhook Integration Section */}
+        {activeWorkflow?.webhook_url && (
+          <div className="bg-card border rounded-xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-card-foreground flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-primary" />
+                  Webhook Lead Capture
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Active workflow: <span className="font-medium">{activeWorkflow.name}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-3 font-mono text-sm text-foreground break-all">
+              {activeWorkflow.webhook_url}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopyWebhook(activeWorkflow.webhook_url!)}
+                className="gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Copy URL
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestWebhook}
+                disabled={testing}
+                className="gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                {testing ? 'Testing...' : 'Test Webhook'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/workflows')}
+                className="gap-2"
+              >
+                Manage Workflows
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Use this URL to capture leads from external sources. POST lead data with:
+              name, email, phone, source.
+            </p>
+          </div>
+        )}
+
+        {/* Recent Failed Messages */}
+        {failedMessages.length > 0 && (
+          <div className="bg-card border rounded-xl shadow-sm">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-card-foreground flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+                Recent Failed Messages
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/inbox')}
+              >
+                View All
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Lead Name
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Channel
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Error Reason
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Retries
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Time
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {failedMessages.map((message) => (
+                    <tr
+                      key={message.error_log_id}
+                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="p-4 font-medium text-card-foreground">
+                        {message.lead_name}
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline" className="uppercase">
+                          {message.channel}
+                        </Badge>
+                      </td>
+                      <td className="p-4 text-destructive text-xs">
+                        {message.error_reason}
+                      </td>
+                      <td className="p-4 text-muted-foreground">
+                        {message.retry_attempts}/{1}
+                      </td>
+                      <td className="p-4 text-muted-foreground">
+                        {new Date(message.created_at).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Tasks */}
+        {recentTasks.length > 0 && (
+          <div className="bg-card border rounded-xl shadow-sm">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-card-foreground flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-warning" />
+                Recent Call Tasks
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/tasks')}
+              >
+                View All
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Lead Name
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Phone
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Status
+                    </th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">
+                      Created
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTasks.map((task) => (
+                    <tr
+                      key={task.id}
+                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="p-4 font-medium text-card-foreground">
+                        {task.title}
+                      </td>
+                      <td className="p-4 text-muted-foreground">-</td>
+                      <td className="p-4">
+                        <Badge
+                          variant="secondary"
+                          className={
+                            task.status === 'completed'
+                              ? 'bg-success/10 text-success'
+                              : 'bg-warning/10 text-warning'
+                          }
+                        >
+                          {task.status}
+                        </Badge>
+                      </td>
+                      <td className="p-4 text-muted-foreground">
+                        {new Date(task.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* No Active Workflow */}
+        {!activeWorkflow && (
+          <div className="bg-card border border-dashed rounded-xl shadow-sm p-6 text-center space-y-3">
+            <div className="flex justify-center">
+              <Zap className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-card-foreground">No Active Workflow</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Create and activate a workflow to enable webhook lead capture
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate('/workflow-builder')}
+              className="bg-primary hover:bg-primary/90 gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              Create Workflow
+            </Button>
+          </div>
+        )}
 
         <div className="bg-card border rounded-xl shadow-sm">
           <div className="p-6 border-b">

@@ -1,10 +1,13 @@
-import { LayoutDashboard, Users, MessageSquare, Mail, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Mail, LogOut, Zap, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { label: 'Leads', icon: Users, path: '/leads' },
+  { label: 'Workflow Builder', icon: Zap, path: '/workflows' },
+  { label: 'Inbox', icon: MessageCircle, path: '/inbox' },
+  { label: 'Tasks', icon: CheckCircle2, path: '/tasks' },
   { label: 'Send SMS', icon: MessageSquare, path: '/send-sms' },
   { label: 'Send Email', icon: Mail, path: '/send-email' },
 ];
