@@ -43,7 +43,7 @@ export default function Workflows() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setWorkflows(data || []);
+      setWorkflows((data || []) as any as Workflow[]);
     } catch (err) {
       console.error('Failed to load workflows:', err);
       toast.error('Failed to load workflows');

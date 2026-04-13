@@ -70,7 +70,7 @@ export default function Dashboard() {
         .single();
 
       if (workflow) {
-        setActiveWorkflow(workflow);
+        setActiveWorkflow(workflow as any as Workflow);
       }
 
       // Load stats
@@ -120,7 +120,7 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      setRecentTasks(tasks || []);
+      setRecentTasks((tasks || []) as any as Task[]);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {

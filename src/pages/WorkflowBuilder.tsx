@@ -40,7 +40,8 @@ export default function WorkflowBuilder() {
 
       if (err) throw err;
       
-      setWorkflow(data);
+      if (!data) throw new Error('Workflow not found');
+      setWorkflow(data as any as Workflow);
       setName(data.name);
       setDescription(data.description || '');
     } catch (err) {
@@ -73,8 +74,8 @@ export default function WorkflowBuilder() {
         user_id: user.id,
         name,
         description,
-        nodes,
-        edges,
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        edges: JSON.parse(JSON.stringify(edges)),
         is_active: workflow?.is_active || false,
         updated_at: new Date().toISOString(),
       };
@@ -97,7 +98,7 @@ export default function WorkflowBuilder() {
           .select('id')
           .single();
         
-        if (err) throw err;
+        if (err || !data) throw err || new Error('Failed to create');
         result = data.id;
       }
 

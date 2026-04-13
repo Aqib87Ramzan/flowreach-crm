@@ -75,7 +75,7 @@ export default function Inbox() {
           unread_count: leadMessages.filter(
             (m) => m.direction === 'inbound' && m.status !== 'read'
           ).length,
-          messages: leadMessages,
+          messages: leadMessages as any as Message[],
         });
       });
 
@@ -114,7 +114,7 @@ export default function Inbox() {
         .eq('id', data.lead_id)
         .single();
 
-      if (leadError) throw leadError;
+      if (leadError || !lead) throw leadError || new Error('Lead not found');
 
       // Create message record
       const { error: messageError } = await supabase.from('messages').insert([
@@ -129,7 +129,7 @@ export default function Inbox() {
           recipient_phone: data.channel === 'sms' ? lead.phone : undefined,
           status: 'sent',
         },
-      ]);
+      ] as any);
 
       if (messageError) throw messageError;
 
@@ -137,7 +137,7 @@ export default function Inbox() {
       if (data.channel === 'sms') {
         await supabase.functions.invoke('send-sms', {
           body: {
-            phone: lead.phone,
+            phone: lead!.phone,
             message: data.content,
             lead_id: data.lead_id,
           },
@@ -145,7 +145,7 @@ export default function Inbox() {
       } else if (data.channel === 'email') {
         await supabase.functions.invoke('send-email', {
           body: {
-            to: lead.email,
+            to: lead!.email,
             subject: 'Message from FlowReach',
             html: `<p>${data.content}</p>`,
             lead_id: data.lead_id,
