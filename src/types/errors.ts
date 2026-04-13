@@ -7,11 +7,10 @@ export interface ErrorLog {
   error_type: 'send_failed' | 'validation_error' | 'provider_error';
   error_message: string;
   retry_count: number;
-  max_retries: number;
   last_retry_at?: string;
   status: 'pending' | 'resolved' | 'abandoned';
   created_at: string;
-  resolved_at?: string;
+  updated_at?: string;
 }
 
 export interface AlertLog {
