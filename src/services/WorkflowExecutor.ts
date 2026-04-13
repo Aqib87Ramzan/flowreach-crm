@@ -68,7 +68,7 @@ export class WorkflowExecutor {
       this.activeExecutions.set(executionId, true);
 
       // Execute workflow steps
-      await this.executeSteps(workflow, triggerData.lead_id, executionId);
+      await this.executeSteps(workflow as any as Workflow, triggerData.lead_id, executionId);
 
       // Update execution status
       await supabase

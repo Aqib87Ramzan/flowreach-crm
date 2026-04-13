@@ -160,10 +160,10 @@ export class ErrorHandlingService {
       if (error) throw error;
 
       return (
-        errorLogs?.map((log) => ({
+        errorLogs?.map((log: any) => ({
           lead_id: log.lead_id,
           lead_name: log.leads?.name || 'Unknown',
-          channel: log.channel,
+          channel: log.channel as 'sms' | 'email',
           error_reason: log.error_message,
           retry_attempts: log.retry_count,
           created_at: log.created_at,
@@ -188,7 +188,7 @@ export class ErrorHandlingService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return errorLogs || [];
+      return (errorLogs || []) as any as ErrorLog[];
     } catch (err) {
       console.error('Failed to fetch pending errors:', err);
       return [];
