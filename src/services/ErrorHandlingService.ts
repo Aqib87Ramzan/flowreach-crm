@@ -49,7 +49,7 @@ export class ErrorHandlingService {
         .single();
 
       if (error) throw error;
-      return errorLog;
+      return errorLog as any as ErrorLog;
     } catch (err) {
       console.error('Failed to log error:', err);
       return null;
@@ -63,12 +63,12 @@ export class ErrorHandlingService {
     try {
       const { data: errorLog, error } = await supabase
         .from('error_logs')
-        .select('retry_count, max_retries')
+        .select('retry_count')
         .eq('id', errorLogId)
         .single();
 
       if (error) return false;
-      return (errorLog?.retry_count || 0) < (errorLog?.max_retries || this.DEFAULT_MAX_RETRIES);
+      return (errorLog?.retry_count || 0) < this.DEFAULT_MAX_RETRIES;
     } catch (err) {
       console.error('Failed to check retry status:', err);
       return false;
@@ -80,10 +80,16 @@ export class ErrorHandlingService {
    */
   async recordRetry(errorLogId: string): Promise<boolean> {
     try {
+      const { data: currentLog } = await supabase
+        .from('error_logs')
+        .select('retry_count')
+        .eq('id', errorLogId)
+        .single();
+
       const { error } = await supabase
         .from('error_logs')
         .update({
-          retry_count: supabase.raw('retry_count + 1'),
+          retry_count: (currentLog?.retry_count || 0) + 1,
           last_retry_at: new Date().toISOString(),
         })
         .eq('id', errorLogId);
@@ -105,8 +111,7 @@ export class ErrorHandlingService {
         .from('error_logs')
         .update({
           status: 'resolved',
-          resolved_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', errorLogId);
 
       if (error) throw error;
@@ -126,8 +131,7 @@ export class ErrorHandlingService {
         .from('error_logs')
         .update({
           status: 'abandoned',
-          resolved_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', errorLogId);
 
       if (error) throw error;
@@ -156,10 +160,10 @@ export class ErrorHandlingService {
       if (error) throw error;
 
       return (
-        errorLogs?.map((log) => ({
+        errorLogs?.map((log: any) => ({
           lead_id: log.lead_id,
           lead_name: log.leads?.name || 'Unknown',
-          channel: log.channel,
+          channel: log.channel as 'sms' | 'email',
           error_reason: log.error_message,
           retry_attempts: log.retry_count,
           created_at: log.created_at,
@@ -184,7 +188,7 @@ export class ErrorHandlingService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return errorLogs || [];
+      return (errorLogs || []) as any as ErrorLog[];
     } catch (err) {
       console.error('Failed to fetch pending errors:', err);
       return [];
