@@ -80,26 +80,31 @@ export default function WorkflowBuilder() {
         updated_at: new Date().toISOString(),
       };
 
-      let result;
+      let workflowId: string;
       if (workflow?.id) {
-        // Update existing
         const { error: err } = await supabase
           .from('workflows')
           .update(workflowData)
           .eq('id', workflow.id);
-        
         if (err) throw err;
-        result = workflow.id;
+        workflowId = workflow.id;
       } else {
-        // Create new
         const { data, error: err } = await supabase
           .from('workflows')
           .insert([workflowData])
           .select('id')
           .single();
-        
         if (err || !data) throw err || new Error('Failed to create');
-        result = data.id;
+        workflowId = data.id;
+      }
+
+      // Auto-generate webhook URL if not already set
+      if (!workflow?.webhook_url) {
+        const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/webhook-lead?workflow_id=${workflowId}&user_id=${workflowData.user_id}`;
+        await supabase
+          .from('workflows')
+          .update({ webhook_url: webhookUrl })
+          .eq('id', workflowId);
       }
 
       toast.success(workflow?.id ? 'Workflow updated!' : 'Workflow created!');
