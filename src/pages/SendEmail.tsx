@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { getLeads, getEmailHistory, addEmail } from '@/lib/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +10,24 @@ import { toast } from 'sonner';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
+interface Lead {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
+interface EmailRecord {
+  id: string;
+  lead_name: string;
+  subject: string | null;
+  status: string | null;
+  created_at: string;
+}
+
 export default function SendEmail() {
-  const leads = getLeads();
-  const [history, setHistory] = useState(getEmailHistory());
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [history, setHistory] = useState<EmailRecord[]>([]);
   const [selectedLead, setSelectedLead] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -29,6 +43,47 @@ export default function SendEmail() {
     ],
   }), []);
 
+  useEffect(() => {
+    fetchLeads();
+    fetchEmailHistory();
+  }, []);
+
+  const fetchLeads = async () => {
+    const { data } = await supabase
+      .from('leads')
+      .select('id, name, email, phone')
+      .order('created_at', { ascending: false });
+    if (data) setLeads(data);
+  };
+
+  const fetchEmailHistory = async () => {
+    const { data } = await supabase
+      .from('messages')
+      .select('id, lead_id, subject, status, created_at')
+      .eq('message_type', 'email')
+      .eq('direction', 'outbound')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (data) {
+      const leadIds = [...new Set(data.map(m => m.lead_id).filter(Boolean))];
+      const { data: leadData } = await supabase
+        .from('leads')
+        .select('id, name')
+        .in('id', leadIds);
+
+      const leadMap = new Map(leadData?.map(l => [l.id, l.name]) || []);
+
+      setHistory(data.map(m => ({
+        id: m.id,
+        lead_name: leadMap.get(m.lead_id || '') || 'Unknown',
+        subject: m.subject,
+        status: m.status,
+        created_at: m.created_at,
+      })));
+    }
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLead || !subject || !body) {
@@ -37,8 +92,8 @@ export default function SendEmail() {
     }
     setLoading(true);
     const lead = leads.find(l => l.id === selectedLead)!;
-    const personalizedSubject = subject.replace(/\{\{name\}\}/g, lead.name).replace(/\{\{email\}\}/g, lead.email);
-    const personalizedBody = body.replace(/\{\{name\}\}/g, lead.name).replace(/\{\{email\}\}/g, lead.email);
+    const personalizedSubject = subject.replace(/\{\{name\}\}/g, lead.name).replace(/\{\{email\}\}/g, lead.email || '');
+    const personalizedBody = body.replace(/\{\{name\}\}/g, lead.name).replace(/\{\{email\}\}/g, lead.email || '');
 
     try {
       const { data, error } = await supabase.functions.invoke('send-email', {
@@ -46,31 +101,19 @@ export default function SendEmail() {
           to: lead.email,
           subject: personalizedSubject,
           html: personalizedBody,
+          lead_id: lead.id,
         },
       });
 
       if (error) throw error;
 
-      addEmail({
-        leadName: lead.name,
-        subject: personalizedSubject,
-        status: 'Sent',
-        timeSent: new Date().toLocaleString(),
-      });
-      setHistory(getEmailHistory());
       setSubject('');
       setBody('');
       setSelectedLead('');
-      toast.success(`Email sent to ${lead.name} via SendGrid`);
+      toast.success(`Email sent to ${lead.name}`);
+      fetchEmailHistory();
     } catch (err: any) {
       console.error('Email send error:', err);
-      addEmail({
-        leadName: lead.name,
-        subject: personalizedSubject,
-        status: 'Failed',
-        timeSent: new Date().toLocaleString(),
-      });
-      setHistory(getEmailHistory());
       toast.error(`Failed to send email: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
@@ -91,7 +134,11 @@ export default function SendEmail() {
             <Select value={selectedLead} onValueChange={setSelectedLead}>
               <SelectTrigger><SelectValue placeholder="Choose a lead..." /></SelectTrigger>
               <SelectContent>
-                {leads.map(l => <SelectItem key={l.id} value={l.id}>{l.name} — {l.email}</SelectItem>)}
+                {leads.map(l => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.name} — {l.email || 'No email'}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -126,10 +173,14 @@ export default function SendEmail() {
               <tbody>
                 {history.map(r => (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="p-4 font-medium text-card-foreground">{r.leadName}</td>
-                    <td className="p-4 text-muted-foreground">{r.subject}</td>
-                    <td className="p-4"><Badge variant="secondary" className="bg-success/10 text-success">{r.status}</Badge></td>
-                    <td className="p-4 text-muted-foreground">{r.timeSent}</td>
+                    <td className="p-4 font-medium text-card-foreground">{r.lead_name}</td>
+                    <td className="p-4 text-muted-foreground">{r.subject || '(no subject)'}</td>
+                    <td className="p-4">
+                      <Badge variant="secondary" className="bg-primary/10 text-primary">
+                        {r.status || 'sent'}
+                      </Badge>
+                    </td>
+                    <td className="p-4 text-muted-foreground">{new Date(r.created_at).toLocaleString()}</td>
                   </tr>
                 ))}
                 {history.length === 0 && (

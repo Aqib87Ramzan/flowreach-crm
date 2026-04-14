@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.101.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html } = await req.json();
+    const { to, subject, html, lead_id, execution_id } = await req.json();
 
     if (!to || !subject || !html) {
       return new Response(JSON.stringify({ error: "Missing required fields: to, subject, html" }), {
@@ -24,6 +25,9 @@ serve(async (req) => {
     if (!SENDGRID_API_KEY) {
       throw new Error("SENDGRID_API_KEY is not configured");
     }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
@@ -39,9 +43,30 @@ serve(async (req) => {
       }),
     });
 
+    const emailStatus = res.ok ? "sent" : "failed";
+
     if (!res.ok) {
       const errorText = await res.text();
       console.error("SendGrid error:", res.status, errorText);
+    }
+
+    // Save message record to database
+    if (lead_id && supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      await supabase.from("messages").insert([{
+        lead_id,
+        workflow_execution_id: execution_id || null,
+        message_type: "email",
+        direction: "outbound",
+        channel: "email",
+        content: html,
+        subject,
+        recipient_email: to,
+        status: emailStatus,
+      }]);
+    }
+
+    if (!res.ok) {
       throw new Error(`SendGrid API error: ${res.status}`);
     }
 
