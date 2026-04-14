@@ -74,14 +74,15 @@ serve(async (req) => {
       throw leadError;
     }
 
-    // Find active workflow (assuming we need to get the workflow via webhook URL)
-    const webhookUrl = `${req.headers.get("origin") || Deno.env.get("SUPABASE_URL")}/webhook/lead`;
+    // Find active workflow
+    let workflowQuery = supabase.from("workflows").select("*").eq("is_active", true);
+    if (queryWorkflowId) {
+      workflowQuery = workflowQuery.eq("id", queryWorkflowId);
+    } else {
+      workflowQuery = workflowQuery.eq("user_id", effectiveUserId);
+    }
 
-    const { data: workflows, error: workflowError } = await supabase
-      .from("workflows")
-      .select("*")
-      .eq("webhook_url", webhookUrl)
-      .eq("is_active", true);
+    const { data: workflows, error: workflowError } = await workflowQuery;
 
     if (workflowError) {
       console.error("Error fetching workflows:", workflowError);
