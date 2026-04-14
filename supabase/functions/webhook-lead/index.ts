@@ -13,12 +13,28 @@ serve(async (req) => {
   }
 
   try {
-    const { name, email, phone, source } = await req.json();
+    const { name, email, phone, source, user_id } = await req.json();
+
+    // Also check query params for user_id/workflow_id
+    const url = new URL(req.url);
+    const queryUserId = url.searchParams.get("user_id");
+    const queryWorkflowId = url.searchParams.get("workflow_id");
+    const effectiveUserId = user_id || queryUserId;
 
     // Validate required fields
     if (!name || !email || !phone) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: name, email, phone" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!effectiveUserId) {
+      return new Response(
+        JSON.stringify({ error: "Missing user_id (pass in body or as query param)" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -47,6 +63,7 @@ serve(async (req) => {
           source: source || "webhook",
           status: "New",
           date_added: new Date().toISOString(),
+          user_id: effectiveUserId,
         },
       ])
       .select()
@@ -57,14 +74,15 @@ serve(async (req) => {
       throw leadError;
     }
 
-    // Find active workflow (assuming we need to get the workflow via webhook URL)
-    const webhookUrl = `${req.headers.get("origin") || Deno.env.get("SUPABASE_URL")}/webhook/lead`;
+    // Find active workflow
+    let workflowQuery = supabase.from("workflows").select("*").eq("is_active", true);
+    if (queryWorkflowId) {
+      workflowQuery = workflowQuery.eq("id", queryWorkflowId);
+    } else {
+      workflowQuery = workflowQuery.eq("user_id", effectiveUserId);
+    }
 
-    const { data: workflows, error: workflowError } = await supabase
-      .from("workflows")
-      .select("*")
-      .eq("webhook_url", webhookUrl)
-      .eq("is_active", true);
+    const { data: workflows, error: workflowError } = await workflowQuery;
 
     if (workflowError) {
       console.error("Error fetching workflows:", workflowError);
