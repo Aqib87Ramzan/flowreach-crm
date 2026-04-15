@@ -264,23 +264,33 @@ async function executeSMSNode(
       node.data?.message ||
       `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
 
-    // Create message record in database
-    const { error: msgError } = await supabase.from("messages").insert([
-      {
-        lead_id: leadId,
-        workflow_execution_id: executionId,
-        message_type: "sms",
-        direction: "outbound",
-        channel: "sms",
-        content: message,
-        recipient_phone: lead.phone,
-        status: "sent",
+    // Call the send-sms function to handle SMS sending via Twilio
+    const sendSmsUrl = new URL(
+      Deno.env.get("SUPABASE_URL") + "/functions/v1/send-sms"
+    );
+    
+    const response = await fetch(sendSmsUrl.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
       },
-    ]);
+      body: JSON.stringify({
+        phone: lead.phone,
+        message,
+        lead_id: leadId,
+        execution_id: executionId,
+      }),
+    });
 
-    if (msgError) throw msgError;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`SMS function error: ${response.status} - ${errorText}`);
+      throw new Error(`SMS function failed: ${response.status}`);
+    }
 
-    console.log(`SMS sent to ${lead.phone}: ${message}`);
+    const result = await response.json();
+    console.log(`SMS queued successfully for ${lead.phone}:`, result);
   } catch (error) {
     console.error("SMS execution error:", error);
     throw error;
