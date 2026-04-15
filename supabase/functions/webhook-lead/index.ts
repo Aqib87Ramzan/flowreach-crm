@@ -251,29 +251,49 @@ async function executeSMSNode(
   executionId: string
 ): Promise<void> {
   try {
+    console.log("=== SMS NODE EXECUTION STARTED ===");
+    console.log("Lead ID:", leadId);
+    console.log("Execution ID:", executionId);
+    console.log("Node data:", node.data);
+
     const { data: lead, error: leadError } = await supabase
       .from("leads")
       .select("*")
       .eq("id", leadId)
       .single();
 
-    if (leadError || !lead) throw new Error("Lead not found");
+    if (leadError) {
+      console.error("Lead fetch error:", leadError);
+      throw new Error("Lead not found: " + leadError.message);
+    }
+    if (!lead) throw new Error("Lead not found");
+
+    console.log("Lead fetched:", { id: lead.id, name: lead.name, phone: lead.phone });
+
     if (!lead.phone) throw new Error("Lead has no phone number");
 
     const message =
       node.data?.message ||
       `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
 
+    console.log("Message to send:", message);
+    console.log("Calling send-sms function...");
+
     // Call the send-sms function to handle SMS sending via Twilio
-    const sendSmsUrl = new URL(
-      Deno.env.get("SUPABASE_URL") + "/functions/v1/send-sms"
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    const response = await fetch(sendSmsUrl.toString(), {
+    console.log("Supabase URL:", supabaseUrl);
+    console.log("Service key available:", !!serviceKey);
+
+    const sendSmsUrl = `${supabaseUrl}/functions/v1/send-sms`;
+    console.log("Send SMS URL:", sendSmsUrl);
+
+    const response = await fetch(sendSmsUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({
         phone: lead.phone,
@@ -283,16 +303,21 @@ async function executeSMSNode(
       }),
     });
 
+    console.log("Send-SMS response status:", response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`SMS function error: ${response.status} - ${errorText}`);
-      throw new Error(`SMS function failed: ${response.status}`);
+      throw new Error(`SMS function failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log(`SMS queued successfully for ${lead.phone}:`, result);
+    console.log("SMS function result:", result);
+    console.log("=== SMS NODE EXECUTION COMPLETED ===");
   } catch (error) {
-    console.error("SMS execution error:", error);
+    console.error("=== SMS EXECUTION ERROR ===");
+    console.error("Error message:", error instanceof Error ? error.message : error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "");
     throw error;
   }
 }
