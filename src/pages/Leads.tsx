@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { getLeads, addLead, deleteLead, Lead } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Lead {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  status: string | null;
+  notes: string | null;
+  date_added: string;
+}
 
 const statusColor: Record<string, string> = {
   New: 'bg-primary/10 text-primary',
@@ -21,16 +32,45 @@ const statusColor: Record<string, string> = {
 const statuses = ['All', 'New', 'Contacted', 'Replied', 'Converted'] as const;
 
 export default function Leads() {
-  const [leads, setLeads] = useState<Lead[]>(getLeads());
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', source: '', notes: '' });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadLeads();
+  }, []);
+
+  const loadLeads = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date_added', { ascending: false });
+
+      if (error) throw error;
+      setLeads(data || []);
+    } catch (err) {
+      console.error('Failed to load leads:', err);
+      toast.error('Failed to load leads');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     return leads.filter(l => {
-      const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || l.email.toLowerCase().includes(search.toLowerCase());
+      const matchSearch =
+        l.name.toLowerCase().includes(search.toLowerCase()) ||
+        (l.email || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'All' || l.status === statusFilter;
       return matchSearch && matchStatus;
     });
@@ -42,21 +82,60 @@ export default function Leads() {
       toast.error('Name and email are required');
       return;
     }
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 500));
-    addLead({ ...form, status: 'New' });
-    setLeads(getLeads());
-    setForm({ name: '', email: '', phone: '', source: '', notes: '' });
-    setOpen(false);
-    setLoading(false);
-    toast.success('Lead added successfully');
+
+    try {
+      setSaving(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in');
+        return;
+      }
+
+      const { error } = await supabase.from('leads').insert([{
+        user_id: user.id,
+        name: form.name,
+        email: form.email,
+        phone: form.phone || null,
+        source: form.source || 'manual',
+        status: 'New',
+        notes: form.notes || null,
+      }]);
+
+      if (error) throw error;
+
+      setForm({ name: '', email: '', phone: '', source: '', notes: '' });
+      setOpen(false);
+      toast.success('Lead added successfully');
+      await loadLeads();
+    } catch (err) {
+      console.error('Failed to add lead:', err);
+      toast.error('Failed to add lead');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteLead(id);
-    setLeads(getLeads());
-    toast.success('Lead deleted');
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from('leads').delete().eq('id', id);
+      if (error) throw error;
+      setLeads(prev => prev.filter(l => l.id !== id));
+      toast.success('Lead deleted');
+    } catch (err) {
+      console.error('Failed to delete lead:', err);
+      toast.error('Failed to delete lead');
+    }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading leads...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -83,7 +162,7 @@ export default function Leads() {
                 </div>
                 <div className="space-y-2">
                   <Label>Phone Number</Label>
-                  <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+1 555-0100" />
+                  <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+92 300 1234567" />
                 </div>
                 <div className="space-y-2">
                   <Label>Source</Label>
@@ -103,8 +182,8 @@ export default function Leads() {
                   <Label>Notes</Label>
                   <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any additional notes..." />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Adding...' : 'Add Lead'}
+                <Button type="submit" className="w-full" disabled={saving}>
+                  {saving ? 'Adding...' : 'Add Lead'}
                 </Button>
               </form>
             </DialogContent>
@@ -141,13 +220,13 @@ export default function Leads() {
               {filtered.map(lead => (
                 <tr key={lead.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="p-4 font-medium text-card-foreground">{lead.name}</td>
-                  <td className="p-4 text-muted-foreground">{lead.email}</td>
-                  <td className="p-4 text-muted-foreground">{lead.phone}</td>
-                  <td className="p-4 text-muted-foreground">{lead.source}</td>
+                  <td className="p-4 text-muted-foreground">{lead.email || '-'}</td>
+                  <td className="p-4 text-muted-foreground">{lead.phone || '-'}</td>
+                  <td className="p-4 text-muted-foreground">{lead.source || '-'}</td>
                   <td className="p-4">
-                    <Badge variant="secondary" className={statusColor[lead.status]}>{lead.status}</Badge>
+                    <Badge variant="secondary" className={statusColor[lead.status || 'New']}>{lead.status || 'New'}</Badge>
                   </td>
-                  <td className="p-4 text-muted-foreground">{lead.dateAdded}</td>
+                  <td className="p-4 text-muted-foreground">{new Date(lead.date_added).toLocaleDateString()}</td>
                   <td className="p-4">
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(lead.id)} className="text-destructive hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
