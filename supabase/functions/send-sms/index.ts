@@ -33,12 +33,23 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // In production, integrate with Twilio using:
-    // const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-    // const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-    // const TWILIO_PHONE = Deno.env.get("TWILIO_PHONE");
+    // Get Twilio credentials from environment variables
+    const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const TWILIO_PHONE = Deno.env.get("TWILIO_PHONE");
 
-    // For MVP, create a message record instead of actually sending
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE) {
+      console.warn(
+        "Twilio credentials not configured. SMS will be logged but not sent.",
+        {
+          hasSid: !!TWILIO_ACCOUNT_SID,
+          hasToken: !!TWILIO_AUTH_TOKEN,
+          hasPhone: !!TWILIO_PHONE,
+        }
+      );
+    }
+
+    // Create message record in database
     const { data: smsData, error: smsError } = await supabase
       .from("messages")
       .insert([
@@ -50,7 +61,7 @@ serve(async (req) => {
           channel: "sms",
           content: message,
           recipient_phone: phone,
-          status: "sent",
+          status: TWILIO_ACCOUNT_SID ? "sent" : "pending",
         },
       ])
       .select()
@@ -61,20 +72,55 @@ serve(async (req) => {
       throw smsError;
     }
 
-    // TODO: Integrate with Twilio when ready:
-    // Send SMS via Twilio
-    // const twilioRes = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + TWILIO_ACCOUNT_SID + "/Messages.json", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/x-www-form-urlencoded",
-    //     "Authorization": "Basic " + btoa(TWILIO_ACCOUNT_SID + ":" + TWILIO_AUTH_TOKEN),
-    //   },
-    //   body: new URLSearchParams({
-    //     From: TWILIO_PHONE,
-    //     To: phone,
-    //     Body: message,
-    //   }).toString(),
-    // });
+    // Send SMS via Twilio if credentials are available
+    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_PHONE) {
+      try {
+        const credentials = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+        const twilioRes = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Authorization": `Basic ${credentials}`,
+            },
+            body: new URLSearchParams({
+              From: TWILIO_PHONE,
+              To: phone,
+              Body: message,
+            }).toString(),
+          }
+        );
+
+        if (!twilioRes.ok) {
+          const errorData = await twilioRes.text();
+          console.error(
+            `Twilio API error (${twilioRes.status}):`,
+            errorData
+          );
+          // Update message status to failed if Twilio call failed
+          await supabase
+            .from("messages")
+            .update({ status: "failed" })
+            .eq("id", smsData.id);
+        } else {
+          const twilioData = await twilioRes.json();
+          console.log(`SMS sent via Twilio. SID: ${twilioData.sid}`);
+          // Update message with Twilio SID
+          await supabase
+            .from("messages")
+            .update({ status: "sent" })
+            .eq("id", smsData.id);
+        }
+      } catch (twilioError) {
+        console.error("Error sending SMS via Twilio:", twilioError);
+        // Mark as failed but don't throw - message is already recorded
+        await supabase
+          .from("messages")
+          .update({ status: "failed" })
+          .eq("id", smsData.id);
+      }
+    }
 
     return new Response(
       JSON.stringify({
