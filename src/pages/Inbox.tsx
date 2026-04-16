@@ -54,6 +54,7 @@ export default function Inbox() {
       const { data: messages, error: messagesError } = await supabase
         .from('messages')
         .select('*')
+        .neq('message_type', 'task')
         .order('created_at', { ascending: false });
 
       if (messagesError) throw messagesError;
@@ -70,7 +71,7 @@ export default function Inbox() {
           lead_name: lead.name,
           lead_email: lead.email,
           lead_phone: lead.phone,
-          last_message: lastMessage?.content || 'No messages',
+          last_message: (lastMessage?.content || 'No messages').replace(/<[^>]*>?/gm, ''),
           last_message_time: lastMessage?.created_at || lead.date_added,
           unread_count: leadMessages.filter(
             (m) => m.direction === 'inbound' && m.status !== 'read'
@@ -97,7 +98,7 @@ export default function Inbox() {
   const handleSendMessage = async (data: {
     lead_id: string;
     content: string;
-    channel: 'sms' | 'email';
+    channel: 'email';
   }) => {
     if (!selectedConversation) return;
 
@@ -116,42 +117,17 @@ export default function Inbox() {
 
       if (leadError || !lead) throw leadError || new Error('Lead not found');
 
-      // Create message record
-      const { error: messageError } = await supabase.from('messages').insert([
-        {
-          lead_id: data.lead_id,
-          message_type: data.channel,
-          direction: 'outbound',
-          channel: data.channel,
-          content: data.content,
-          sender_id: user.id,
-          recipient_email: data.channel === 'email' ? lead.email : undefined,
-          recipient_phone: data.channel === 'sms' ? lead.phone : undefined,
-          status: 'sent',
-        },
-      ] as any);
 
-      if (messageError) throw messageError;
 
       // Call appropriate sending function
-      if (data.channel === 'sms') {
-        await supabase.functions.invoke('send-sms', {
-          body: {
-            phone: lead!.phone,
-            message: data.content,
-            lead_id: data.lead_id,
-          },
-        });
-      } else if (data.channel === 'email') {
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: lead!.email,
-            subject: 'Message from FlowReach',
-            html: `<p>${data.content}</p>`,
-            lead_id: data.lead_id,
-          },
-        });
-      }
+      await supabase.functions.invoke('send-email', {
+        body: {
+          to: lead!.email,
+          subject: 'Message from FlowReach',
+          html: `<p>${data.content}</p>`,
+          lead_id: data.lead_id,
+        },
+      });
 
       toast.success(`${data.channel.toUpperCase()} sent successfully`);
       await loadConversations();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Send, MessageSquare, Mail, MoreVertical } from 'lucide-react';
+import { Search, Send, MessageSquare, Mail, MoreVertical, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -107,7 +107,7 @@ interface MessageThreadProps {
   onSendMessage: (data: {
     lead_id: string;
     content: string;
-    channel: 'sms' | 'email';
+    channel: 'email';
   }) => Promise<void>;
   sending: boolean;
 }
@@ -118,7 +118,6 @@ export function MessageThread({
   sending,
 }: MessageThreadProps) {
   const [messageContent, setMessageContent] = useState('');
-  const [selectedChannel, setSelectedChannel] = useState<'sms' | 'email'>('sms');
 
   const handleSend = async () => {
     if (!conversation || !messageContent.trim()) return;
@@ -127,7 +126,7 @@ export function MessageThread({
       await onSendMessage({
         lead_id: conversation.lead_id,
         content: messageContent,
-        channel: selectedChannel,
+        channel: 'email',
       });
       setMessageContent('');
     } catch (error) {
@@ -179,47 +178,22 @@ export function MessageThread({
       {/* Reply Input */}
       <div className="border-t bg-card p-4 space-y-3">
         <div className="flex gap-2">
-          <Select value={selectedChannel} onValueChange={(value) => setSelectedChannel(value as 'sms' | 'email')}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sms">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  SMS
-                </div>
-              </SelectItem>
-              <SelectItem value="email">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Email
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="text-xs text-muted-foreground self-center">
-            {lastMessage && `Last: ${lastChannelUsed.toUpperCase()}`}
+          <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted">
+            <Mail className="w-4 h-4" />
+            <span className="text-sm font-medium">Email Message</span>
           </div>
         </div>
 
         <Textarea
-          placeholder={
-            selectedChannel === 'sms'
-              ? 'Type SMS message (160 char limit)...'
-              : 'Type email message...'
-          }
+          placeholder="Type email message..."
           value={messageContent}
           onChange={(e) => setMessageContent(e.target.value)}
-          maxLength={selectedChannel === 'sms' ? 160 : undefined}
           className="min-h-20"
         />
 
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {selectedChannel === 'sms'
-              ? `${messageContent.length}/160 characters`
-              : `${messageContent.length} characters`}
+            {messageContent.length} characters
           </p>
           <Button
             onClick={handleSend}
@@ -255,14 +229,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {message.subject && (
             <p className="text-sm font-semibold">{message.subject}</p>
           )}
-          <p className="text-sm break-words">{message.content}</p>
+          <p className="text-sm break-words whitespace-pre-wrap">{(message.content || '').replace(/<[^>]*>?/gm, '')}</p>
           <div className="flex items-center gap-2 text-xs opacity-70">
-            {message.message_type === 'sms' ? (
-              <MessageSquare className="w-3 h-3" />
-            ) : (
-              <Mail className="w-3 h-3" />
-            )}
+            <Mail className="w-3 h-3" />
             <span>{new Date(message.created_at).toLocaleTimeString()}</span>
+            {message.status === 'failed' && (
+              <span className="text-red-300 font-bold ml-2">Failed (Check logs or Meta 24hr rule)</span>
+            )}
           </div>
         </div>
       </div>

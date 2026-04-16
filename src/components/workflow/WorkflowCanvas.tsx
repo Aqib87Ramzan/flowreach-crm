@@ -15,9 +15,7 @@ import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   TriggerNode,
-  SMSNode,
   EmailNode,
-  WhatsAppNode,
   WaitNode,
   ConditionNode,
   TaskNode,
@@ -27,9 +25,7 @@ import { Workflow } from '@/types/workflow';
 
 const nodeTypes = {
   trigger: TriggerNode,
-  sms: SMSNode,
   email: EmailNode,
-  whatsapp: WhatsAppNode,
   wait: WaitNode,
   condition: ConditionNode,
   task: TaskNode,

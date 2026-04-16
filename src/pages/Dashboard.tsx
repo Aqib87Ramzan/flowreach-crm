@@ -156,11 +156,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total Leads" value={stats.totalLeads} icon={Users} />
           <StatCard title="Active Workflows" value={stats.activeWorkflows} icon={Zap} color="bg-primary" />
-          <StatCard title="Failed Messages" value={stats.failedMessages} icon={AlertCircle} color="bg-destructive" />
           <StatCard title="Pending Tasks" value={stats.pendingTasks} icon={CheckCircle2} color="bg-warning" />
-          <StatCard title="Conversations" value={stats.totalConversations} icon={MessageCircle} color="bg-success" />
-          <StatCard title="SMS Sent" value={stats.smsSent} icon={MessageSquare} color="bg-info" />
-          <StatCard title="Emails Sent" value={stats.emailsSent} icon={Mail} color="bg-info" />
+          <StatCard title="Emails Sent" value={stats.emailsSent} icon={Mail} color="bg-black" />
         </div>
 
         {/* Webhook Integration Section */}
@@ -201,41 +198,7 @@ export default function Dashboard() {
         )}
 
         {/* Recent Failed Messages */}
-        {failedMessages.length > 0 && (
-          <div className="bg-card border rounded-xl shadow-sm">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h3 className="font-semibold text-card-foreground flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-destructive" />
-                Recent Failed Messages
-              </h3>
-              <Button variant="outline" size="sm" onClick={() => navigate('/inbox')}>View All</Button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-4 font-medium text-muted-foreground">Lead Name</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">Channel</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">Error Reason</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">Retries</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {failedMessages.map((message) => (
-                    <tr key={message.error_log_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium text-card-foreground">{message.lead_name}</td>
-                      <td className="p-4"><Badge variant="outline" className="uppercase">{message.channel}</Badge></td>
-                      <td className="p-4 text-destructive text-xs">{message.error_reason}</td>
-                      <td className="p-4 text-muted-foreground">{message.retry_attempts}/1</td>
-                      <td className="p-4 text-muted-foreground">{new Date(message.created_at).toLocaleTimeString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+
 
         {/* Recent Tasks */}
         {recentTasks.length > 0 && (

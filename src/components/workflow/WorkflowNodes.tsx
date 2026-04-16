@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Zap, MessageSquare, Mail, Clock, GitBranch, CheckSquare, Phone } from 'lucide-react';
+import { Zap, Mail, Clock, GitBranch, CheckSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -29,35 +29,7 @@ export function TriggerNode({ data }: NodeProps) {
   );
 }
 
-export function SMSNode({ data }: NodeProps) {
-  const [editing, setEditing] = useState(false);
 
-  return (
-    <div className={`${nodeStyles.base} ${nodeStyles.sms}`} onDoubleClick={() => setEditing(!editing)}>
-      <Handle type="target" position={Position.Top} />
-      <div className="flex items-center gap-2">
-        <MessageSquare className="w-4 h-4 text-success" />
-        <span className="font-semibold text-sm text-card-foreground">{data.label || 'Send SMS'}</span>
-      </div>
-      {editing ? (
-        <div className="mt-2 space-y-1">
-          <Textarea
-            defaultValue={data.message || ''}
-            onChange={(e) => { data.message = e.target.value; }}
-            placeholder="SMS message text..."
-            className="text-xs min-h-[60px] bg-card"
-          />
-          <p className="text-xs text-muted-foreground">Double-click to toggle edit</p>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground mt-1 max-w-[180px] truncate">
-          {data.message || 'Double-click to set message'}
-        </p>
-      )}
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-}
 
 export function EmailNode({ data }: NodeProps) {
   const [editing, setEditing] = useState(false);
@@ -147,35 +119,7 @@ export function ConditionNode({ data }: NodeProps) {
   );
 }
 
-export function WhatsAppNode({ data }: NodeProps) {
-  const [editing, setEditing] = useState(false);
 
-  return (
-    <div className={`${nodeStyles.base} ${nodeStyles.whatsapp}`} onDoubleClick={() => setEditing(!editing)}>
-      <Handle type="target" position={Position.Top} />
-      <div className="flex items-center gap-2">
-        <Phone className="w-4 h-4 text-green-500" />
-        <span className="font-semibold text-sm text-card-foreground">{data.label || 'Send WhatsApp'}</span>
-      </div>
-      {editing ? (
-        <div className="mt-2 space-y-1">
-          <Textarea
-            defaultValue={data.message || ''}
-            onChange={(e) => { data.message = e.target.value; }}
-            placeholder="WhatsApp message text..."
-            className="text-xs min-h-[60px] bg-card"
-          />
-          <p className="text-xs text-muted-foreground">Double-click to toggle edit</p>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground mt-1 max-w-[180px] truncate">
-          {data.message || 'Double-click to set message'}
-        </p>
-      )}
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-}
 
 export function TaskNode({ data }: NodeProps) {
   const [editing, setEditing] = useState(false);

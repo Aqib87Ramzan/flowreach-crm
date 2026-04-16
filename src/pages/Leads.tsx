@@ -19,6 +19,7 @@ interface Lead {
   source: string | null;
   status: string | null;
   notes: string | null;
+  score: number | null;
   date_added: string;
 }
 
@@ -54,6 +55,7 @@ export default function Leads() {
         .from('leads')
         .select('*')
         .eq('user_id', user.id)
+        .order('score', { ascending: false })
         .order('date_added', { ascending: false });
 
       if (error) throw error;
@@ -99,6 +101,7 @@ export default function Leads() {
         source: form.source || 'manual',
         status: 'New',
         notes: form.notes || null,
+        score: Math.floor(Math.random() * 100), // Random base score simulation for new manual leads
       }]);
 
       if (error) throw error;
@@ -211,6 +214,7 @@ export default function Leads() {
                 <th className="text-left p-4 font-medium text-muted-foreground">Email</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Phone</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Source</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Score</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
                 <th className="text-left p-4 font-medium text-muted-foreground"></th>
@@ -223,6 +227,15 @@ export default function Leads() {
                   <td className="p-4 text-muted-foreground">{lead.email || '-'}</td>
                   <td className="p-4 text-muted-foreground">{lead.phone || '-'}</td>
                   <td className="p-4 text-muted-foreground">{lead.source || '-'}</td>
+                  <td className="p-4">
+                    <Badge variant="outline" className={`font-mono border-none ${
+                        (lead.score || 0) >= 500 ? 'bg-emerald-500/10 text-emerald-600' :
+                        (lead.score || 0) >= 100 ? 'bg-indigo-500/10 text-indigo-600' :
+                        'bg-slate-500/10 text-slate-600'
+                    }`}>
+                      {(lead.score || 0)} pts
+                    </Badge>
+                  </td>
                   <td className="p-4">
                     <Badge variant="secondary" className={statusColor[lead.status || 'New']}>{lead.status || 'New'}</Badge>
                   </td>

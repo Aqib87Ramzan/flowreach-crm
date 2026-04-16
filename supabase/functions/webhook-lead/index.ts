@@ -201,9 +201,6 @@ async function executeWorkflow(
     if (node.type === "trigger") {
       // Skip trigger node
       continue;
-    } else if (node.type === "sms") {
-      // Execute SMS
-      await executeSMSNode(supabase, node, leadId, executionId);
     } else if (node.type === "email") {
       // Execute Email
       await executeEmailNode(supabase, node, leadId, executionId);
@@ -217,9 +214,6 @@ async function executeWorkflow(
         console.log("Lead has replied, stopping workflow");
         break;
       }
-    } else if (node.type === "whatsapp") {
-      // Execute WhatsApp
-      await executeWhatsAppNode(supabase, node, leadId, executionId);
     } else if (node.type === "task") {
       // Execute task
       await executeTaskNode(supabase, node, leadId, executionId);
@@ -247,83 +241,6 @@ function buildExecutionPath(
   return path;
 }
 
-async function executeSMSNode(
-  supabase: any,
-  node: any,
-  leadId: string,
-  executionId: string
-): Promise<void> {
-  try {
-    console.log("=== SMS NODE EXECUTION STARTED ===");
-    console.log("Lead ID:", leadId);
-    console.log("Execution ID:", executionId);
-    console.log("Node data:", node.data);
-
-    const { data: lead, error: leadError } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("id", leadId)
-      .single();
-
-    if (leadError) {
-      console.error("Lead fetch error:", leadError);
-      throw new Error("Lead not found: " + leadError.message);
-    }
-    if (!lead) throw new Error("Lead not found");
-
-    console.log("Lead fetched:", { id: lead.id, name: lead.name, phone: lead.phone });
-
-    if (!lead.phone) throw new Error("Lead has no phone number");
-
-    const message =
-      node.data?.message ||
-      `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
-
-    console.log("Message to send:", message);
-    console.log("Calling send-sms function...");
-
-    // Call the send-sms function to handle SMS sending via Twilio
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    console.log("Supabase URL:", supabaseUrl);
-    console.log("Service key available:", !!serviceKey);
-
-    const sendSmsUrl = `${supabaseUrl}/functions/v1/send-sms`;
-    console.log("Send SMS URL:", sendSmsUrl);
-
-    const response = await fetch(sendSmsUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({
-        phone: lead.phone,
-        message,
-        lead_id: leadId,
-        execution_id: executionId,
-      }),
-    });
-
-    console.log("Send-SMS response status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`SMS function error: ${response.status} - ${errorText}`);
-      throw new Error(`SMS function failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log("SMS function result:", result);
-    console.log("=== SMS NODE EXECUTION COMPLETED ===");
-  } catch (error) {
-    console.error("=== SMS EXECUTION ERROR ===");
-    console.error("Error message:", error instanceof Error ? error.message : error);
-    console.error("Error stack:", error instanceof Error ? error.stack : "");
-    throw error;
-  }
-}
 
 async function executeEmailNode(
   supabase: any,
@@ -345,23 +262,34 @@ async function executeEmailNode(
       node.data?.message ||
       `Hi ${lead.name}, thanks for reaching out! We're excited to work with you.`;
 
-    // Create message record in database
-    const { error: msgError } = await supabase.from("messages").insert([
-      {
-        lead_id: leadId,
-        workflow_execution_id: executionId,
-        message_type: "email",
-        direction: "outbound",
-        channel: "email",
-        content: message,
-        recipient_email: lead.email,
-        status: "sent",
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
+
+    const response = await fetch(sendEmailUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
       },
-    ]);
+      body: JSON.stringify({
+        to: lead.email,
+        subject: node.data?.subject || "Message from FlowReach",
+        html: `<p>${message}</p>`,
+        lead_id: leadId,
+        execution_id: executionId,
+      }),
+    });
 
-    if (msgError) throw msgError;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Email function error: ${response.status} - ${errorText}`);
+      throw new Error(`Email function failed: ${response.status}`);
+    }
 
-    console.log(`Email sent to ${lead.email}: ${message}`);
+    // Note: send-email function handles creating the message record
+    console.log(`Email successfully forwarded to send-email function for ${lead.email}`);
   } catch (error) {
     console.error("Email execution error:", error);
     throw error;
@@ -398,60 +326,7 @@ async function executeTaskNode(
   }
 }
 
-async function executeWhatsAppNode(
-  supabase: any,
-  node: any,
-  leadId: string,
-  executionId: string
-): Promise<void> {
-  try {
-    console.log("=== WHATSAPP NODE EXECUTION STARTED ===");
 
-    const { data: lead, error: leadError } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("id", leadId)
-      .single();
-
-    if (leadError || !lead) throw new Error("Lead not found");
-    if (!lead.phone) throw new Error("Lead has no phone number");
-
-    const message =
-      node.data?.message ||
-      `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    const sendWhatsAppUrl = `${supabaseUrl}/functions/v1/send-whatsapp`;
-
-    const response = await fetch(sendWhatsAppUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({
-        phone: lead.phone,
-        message,
-        lead_id: leadId,
-        execution_id: executionId,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`WhatsApp function failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log("WhatsApp function result:", result);
-    console.log("=== WHATSAPP NODE EXECUTION COMPLETED ===");
-  } catch (error) {
-    console.error("WhatsApp execution error:", error instanceof Error ? error.message : error);
-    throw error;
-  }
-}
 
 async function checkLeadReply(supabase: any, leadId: string): Promise<boolean> {
   try {

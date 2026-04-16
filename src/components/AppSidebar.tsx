@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, MessageSquare, Mail, LogOut, Zap, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Mail, LogOut, Zap, MessageCircle, CheckCircle2, Calendar, LineChart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,8 +8,8 @@ const navItems = [
   { label: 'Workflow Builder', icon: Zap, path: '/workflows' },
   { label: 'Inbox', icon: MessageCircle, path: '/inbox' },
   { label: 'Tasks', icon: CheckCircle2, path: '/tasks' },
-  { label: 'Send SMS', icon: MessageSquare, path: '/send-sms' },
-  { label: 'Send Email', icon: Mail, path: '/send-email' },
+  { label: 'Calendar', icon: Calendar, path: '/calendar' },
+  { label: 'Analytics', icon: LineChart, path: '/analytics' },
 ];
 
 export default function AppSidebar() {
@@ -24,9 +24,12 @@ export default function AppSidebar() {
   return (
     <aside className="w-64 min-h-screen bg-sidebar-bg flex flex-col shrink-0">
       <div className="p-6 border-b border-sidebar-border">
-        <h1 className="text-2xl font-bold text-sidebar-fg tracking-tight">
-          <span className="text-primary">Flow</span>Reach
-        </h1>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="FlowReach Logo" className="w-8 h-8 rounded-lg object-contain" />
+          <h1 className="text-2xl font-bold text-sidebar-fg tracking-tight">
+            <span className="text-primary">Flow</span>Reach
+          </h1>
+        </div>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

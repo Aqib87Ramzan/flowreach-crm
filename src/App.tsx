@@ -11,8 +11,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Inbox from "./pages/Inbox";
-import SendSMS from "./pages/SendSMS";
-import SendEmail from "./pages/SendEmail";
+import CalendarPage from "./pages/Calendar";
+import Analytics from "./pages/Analytics";
 import Tasks from "./pages/Tasks";
 import Workflows from "./pages/Workflows";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
@@ -47,8 +47,8 @@ const AppContent = () => {
       <Route path="/workflows" element={<Workflows />} />
       <Route path="/workflow-builder" element={<WorkflowBuilder />} />
       <Route path="/workflow-builder/:id" element={<WorkflowBuilder />} />
-      <Route path="/send-sms" element={<SendSMS />} />
-      <Route path="/send-email" element={<SendEmail />} />
+      <Route path="/calendar" element={<CalendarPage />} />
+      <Route path="/analytics" element={<Analytics />} />
       <Route path="/tasks" element={<Tasks />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

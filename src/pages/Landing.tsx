@@ -6,8 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 const features = [
   { icon: Users, title: 'Lead Management', desc: 'Organize and track all your leads in one place' },
-  { icon: MessageSquare, title: 'SMS Campaigns', desc: 'Send personalized SMS messages at scale' },
-  { icon: Mail, title: 'Email Outreach', desc: 'Create and send beautiful email campaigns' },
+  { icon: Mail, title: 'Email Campaigns', desc: 'Send personalized email outreach at scale' },
+  { icon: MessageSquare, title: 'Inbox Conversations', desc: 'Manage all lead replies in a unified inbox' },
   { icon: BarChart3, title: 'Analytics', desc: 'Track performance with real-time dashboards' },
 ];
 
@@ -30,9 +30,12 @@ export default function Landing() {
       {/* Header */}
       <header className="border-b">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">
-            <span className="text-primary">Flow</span><span className="text-foreground">Reach</span>
-          </h1>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="FlowReach" className="w-8 h-8 rounded-lg object-contain" />
+            <h1 className="text-2xl font-bold">
+              <span className="text-primary">Flow</span><span className="text-foreground">Reach</span>
+            </h1>
+          </div>
           <div className="flex gap-3">
             <Button variant="ghost" onClick={() => navigate('/login')}>Login</Button>
             <Button onClick={() => navigate('/register')}>Get Started</Button>
