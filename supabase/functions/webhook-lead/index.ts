@@ -217,6 +217,9 @@ async function executeWorkflow(
         console.log("Lead has replied, stopping workflow");
         break;
       }
+    } else if (node.type === "whatsapp") {
+      // Execute WhatsApp
+      await executeWhatsAppNode(supabase, node, leadId, executionId);
     } else if (node.type === "task") {
       // Execute task
       await executeTaskNode(supabase, node, leadId, executionId);
@@ -391,6 +394,61 @@ async function executeTaskNode(
     console.log(`Task created: ${taskDescription}`);
   } catch (error) {
     console.error("Task execution error:", error);
+    throw error;
+  }
+}
+
+async function executeWhatsAppNode(
+  supabase: any,
+  node: any,
+  leadId: string,
+  executionId: string
+): Promise<void> {
+  try {
+    console.log("=== WHATSAPP NODE EXECUTION STARTED ===");
+
+    const { data: lead, error: leadError } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("id", leadId)
+      .single();
+
+    if (leadError || !lead) throw new Error("Lead not found");
+    if (!lead.phone) throw new Error("Lead has no phone number");
+
+    const message =
+      node.data?.message ||
+      `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const sendWhatsAppUrl = `${supabaseUrl}/functions/v1/send-whatsapp`;
+
+    const response = await fetch(sendWhatsAppUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        phone: lead.phone,
+        message,
+        lead_id: leadId,
+        execution_id: executionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`WhatsApp function failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log("WhatsApp function result:", result);
+    console.log("=== WHATSAPP NODE EXECUTION COMPLETED ===");
+  } catch (error) {
+    console.error("WhatsApp execution error:", error instanceof Error ? error.message : error);
     throw error;
   }
 }

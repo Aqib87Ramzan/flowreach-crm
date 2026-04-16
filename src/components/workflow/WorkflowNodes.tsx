@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Zap, MessageSquare, Mail, Clock, GitBranch, CheckSquare } from 'lucide-react';
+import { Zap, MessageSquare, Mail, Clock, GitBranch, CheckSquare, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -9,6 +9,7 @@ const nodeStyles = {
   trigger: 'border-primary bg-primary/10',
   sms: 'border-success bg-success/10',
   email: 'border-warning bg-warning/10',
+  whatsapp: 'border-green-500 bg-green-500/10',
   wait: 'border-muted bg-muted/20',
   condition: 'border-destructive bg-destructive/10',
   task: 'border-blue-500 bg-blue-500/10',
@@ -141,6 +142,36 @@ export function ConditionNode({ data }: NodeProps) {
       <p className="text-xs text-muted-foreground mt-1">
         Stops workflow if lead replied
       </p>
+      <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+}
+
+export function WhatsAppNode({ data }: NodeProps) {
+  const [editing, setEditing] = useState(false);
+
+  return (
+    <div className={`${nodeStyles.base} ${nodeStyles.whatsapp}`} onDoubleClick={() => setEditing(!editing)}>
+      <Handle type="target" position={Position.Top} />
+      <div className="flex items-center gap-2">
+        <Phone className="w-4 h-4 text-green-500" />
+        <span className="font-semibold text-sm text-card-foreground">{data.label || 'Send WhatsApp'}</span>
+      </div>
+      {editing ? (
+        <div className="mt-2 space-y-1">
+          <Textarea
+            defaultValue={data.message || ''}
+            onChange={(e) => { data.message = e.target.value; }}
+            placeholder="WhatsApp message text..."
+            className="text-xs min-h-[60px] bg-card"
+          />
+          <p className="text-xs text-muted-foreground">Double-click to toggle edit</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground mt-1 max-w-[180px] truncate">
+          {data.message || 'Double-click to set message'}
+        </p>
+      )}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
