@@ -1,4 +1,4 @@
-import { Zap, MessageSquare, Mail, Clock, GitBranch, CheckSquare } from 'lucide-react';
+import { Zap, MessageSquare, Mail, Clock, GitBranch, CheckSquare, Phone } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const nodes = [
@@ -15,6 +15,13 @@ const nodes = [
     description: 'Send a text',
     icon: MessageSquare,
     color: 'text-success',
+  },
+  {
+    type: 'whatsapp',
+    label: 'WhatsApp',
+    description: 'Send WhatsApp msg',
+    icon: Phone,
+    color: 'text-green-500',
   },
   {
     type: 'email',
