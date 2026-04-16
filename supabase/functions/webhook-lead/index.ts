@@ -217,6 +217,9 @@ async function executeWorkflow(
         console.log("Lead has replied, stopping workflow");
         break;
       }
+    } else if (node.type === "whatsapp") {
+      // Execute WhatsApp
+      await executeWhatsAppNode(supabase, node, leadId, executionId);
     } else if (node.type === "task") {
       // Execute task
       await executeTaskNode(supabase, node, leadId, executionId);
