@@ -1,1 +1,4 @@
 project_id = "ndmhlljjnvfzvvqidgkh"
+
+[db]
+seed_file_path = "seed.sql"
