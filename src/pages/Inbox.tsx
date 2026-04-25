@@ -223,7 +223,22 @@ export default function Inbox() {
           <ConversationList
             conversations={conversations}
             selectedConversation={selectedConversation}
-            onSelectConversation={setSelectedConversation}
+            onSelectConversation={async (conv) => {
+              setSelectedConversation(conv);
+              // Mark unread inbound messages as read
+              if (conv.unread_count > 0) {
+                const unreadIds = conv.messages
+                  .filter((m) => m.direction === 'inbound' && m.status !== 'read')
+                  .map((m) => m.id);
+                if (unreadIds.length > 0) {
+                  await supabase
+                    .from('messages')
+                    .update({ status: 'read', read_at: new Date().toISOString() })
+                    .in('id', unreadIds);
+                  await loadConversations();
+                }
+              }
+            }}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             loading={loading}
