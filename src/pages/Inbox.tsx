@@ -170,13 +170,23 @@ export default function Inbox() {
 
 
 
+      // Determine reply subject from existing conversation thread
+      const lastMessage = selectedConversation.messages?.[0];
+      const existingSubject = selectedConversation.messages
+        ?.map(m => m.subject)
+        .find(s => s && s.trim() !== '') || '';
+      const replySubject = existingSubject
+        ? (existingSubject.startsWith('Re: ') ? existingSubject : `Re: ${existingSubject}`)
+        : 'Message from FlowReach';
+
       // Call appropriate sending function
       await supabase.functions.invoke('send-email', {
         body: {
           to: lead!.email,
-          subject: 'Message from FlowReach',
+          subject: replySubject,
           html: `<p>${data.content}</p>`,
           lead_id: data.lead_id,
+          in_reply_to: (lastMessage as any)?.email_message_id || null,
         },
       });
 

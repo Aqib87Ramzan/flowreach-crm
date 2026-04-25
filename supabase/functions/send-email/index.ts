@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html, lead_id, execution_id } = await req.json();
+    const { to, subject, html, lead_id, execution_id, in_reply_to } = await req.json();
 
     if (!to || !subject || !html) {
       return new Response(JSON.stringify({ error: "Missing required fields: to, subject, html" }), {
@@ -53,13 +53,22 @@ serve(async (req) => {
       });
 
       console.log(`Sending email to ${to}...`);
-      const info = await transporter.sendMail({
+      // Build mail options with optional threading headers
+      const mailOptions: any = {
         from: SMTP_FROM_EMAIL,
         to: to,
         subject: subject,
         text: "Please view this email in a client that supports HTML.",
         html: html,
-      });
+      };
+
+      // Add threading headers so replies stay in the same Gmail thread
+      if (in_reply_to) {
+        mailOptions.inReplyTo = in_reply_to;
+        mailOptions.references = [in_reply_to];
+      }
+
+      const info = await transporter.sendMail(mailOptions);
 
       console.log("Email successfully sent via SMTP!", info.messageId);
       emailStatus = "sent";

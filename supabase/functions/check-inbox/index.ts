@@ -183,6 +183,19 @@ async function handleImapFetch(supabase: any) {
         );
       }
 
+      // Pre-fetch all existing inbound email Message-IDs to avoid duplicates
+      const { data: existingMessages } = await supabase
+        .from("messages")
+        .select("email_message_id")
+        .eq("direction", "inbound")
+        .not("email_message_id", "is", null);
+
+      const importedMessageIds = new Set<string>();
+      existingMessages?.forEach((msg: any) => {
+        if (msg.email_message_id) importedMessageIds.add(msg.email_message_id);
+      });
+      console.log(`Already have ${importedMessageIds.size} inbound emails in DB`);
+
       // Fetch and process emails
       for await (const message of client.fetch(searchResults, {
         envelope: true,
@@ -198,6 +211,12 @@ async function handleImapFetch(supabase: any) {
         const lead = leadEmailMap.get(senderAddress);
         if (!lead) continue;
 
+        // Use the email's unique Message-ID for deduplication
+        const emailMessageId = envelope.messageId;
+        if (emailMessageId && importedMessageIds.has(emailMessageId)) {
+          continue; // Already imported — skip
+        }
+
         const subject = envelope.subject || "Reply";
         const emailDate = envelope.date || new Date();
 
@@ -208,22 +227,7 @@ async function handleImapFetch(supabase: any) {
           textContent = extractTextFromEmail(rawEmail);
         }
 
-        // Check for duplicates (same lead, direction, subject, within 1 minute window)
-        const { data: existing } = await supabase
-          .from("messages")
-          .select("id")
-          .eq("lead_id", lead.id)
-          .eq("direction", "inbound")
-          .eq("subject", subject)
-          .gte("created_at", new Date(emailDate.getTime() - 60000).toISOString())
-          .lte("created_at", new Date(emailDate.getTime() + 60000).toISOString())
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          continue; // Skip duplicate
-        }
-
-        // Insert inbound message
+        // Insert inbound message with email_message_id for future dedup
         const { error: msgError } = await supabase.from("messages").insert([{
           lead_id: lead.id,
           message_type: "email",
@@ -232,12 +236,15 @@ async function handleImapFetch(supabase: any) {
           content: textContent,
           subject: subject,
           status: "received",
+          email_message_id: emailMessageId || null,
+          created_at: emailDate.toISOString(),
         }]);
 
         if (msgError) {
           console.error(`Failed to save reply from ${lead.name}: ${msgError.message}`);
         } else {
           newMessageCount++;
+          if (emailMessageId) importedMessageIds.add(emailMessageId); // Track within this run too
           console.log(`Imported reply from ${lead.name} (${senderAddress}): ${subject}`);
         }
       }
