@@ -1,7 +1,7 @@
 // Workflow node types
 export interface WorkflowNode {
   id: string;
-  type: 'trigger' | 'sms' | 'email' | 'wait' | 'condition' | 'task';
+  type: 'trigger' | 'email' | 'wait' | 'condition' | 'task';
   position: { x: number; y: number };
   data: {
     label: string;

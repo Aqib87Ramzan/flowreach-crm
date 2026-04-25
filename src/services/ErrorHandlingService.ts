@@ -26,7 +26,7 @@ export class ErrorHandlingService {
    */
   async logError(
     leadId: string,
-    channel: 'sms' | 'email',
+    channel: 'email',
     errorMessage: string,
     errorType: 'send_failed' | 'validation_error' | 'provider_error' = 'send_failed',
     options: { workflowExecutionId?: string; messageId?: string } = {}
@@ -163,7 +163,7 @@ export class ErrorHandlingService {
         errorLogs?.map((log: any) => ({
           lead_id: log.lead_id,
           lead_name: log.leads?.name || 'Unknown',
-          channel: log.channel as 'sms' | 'email',
+          channel: log.channel as 'email',
           error_reason: log.error_message,
           retry_attempts: log.retry_count,
           created_at: log.created_at,

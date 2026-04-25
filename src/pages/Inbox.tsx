@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { ConversationList, MessageThread } from '@/components/inbox/InboxComponents';
 import { supabase } from '@/integrations/supabase/client';
 import { Conversation, Message } from '@/types/communications';
 import { toast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Inbox() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -11,6 +13,7 @@ export default function Inbox() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -35,6 +38,54 @@ export default function Inbox() {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Auto-poll for new replies every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkForReplies(true);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkForReplies = async (silent = false) => {
+    try {
+      setChecking(true);
+      const { data, error } = await supabase.functions.invoke('check-inbox');
+
+      if (error) throw error;
+
+      if (data?.success === false) {
+        // IMAP error with details — always show these, even on silent polls
+        const details = data.details;
+        console.error('IMAP check failed:', data.error, details);
+        if (details) {
+          toast.error(
+            `IMAP Error: ${data.error}\n\nHost tried: ${details.imapHost}:${details.imapPort}\nUser: ${details.username}\n\n${details.hint}`,
+            { duration: 12000 }
+          );
+        } else {
+          toast.error(data.error || 'Failed to check inbox', { duration: 8000 });
+        }
+        return;
+      }
+
+      if (data?.newMessages > 0) {
+        toast.success(`${data.newMessages} new replies imported!`);
+        await loadConversations();
+      } else if (!silent) {
+        const debugInfo = data?.debug ? ` (IMAP: ${data.debug.imapHost}:${data.debug.imapPort})` : '';
+        toast.info(`No new replies found${debugInfo}`);
+      }
+    } catch (error) {
+      if (!silent) {
+        const msg = error instanceof Error ? error.message : 'Failed to check for replies';
+        toast.error(msg);
+      }
+      console.error('Check replies error:', error);
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const loadConversations = async () => {
     try {
@@ -143,7 +194,22 @@ export default function Inbox() {
   return (
     <DashboardLayout>
       <div className="h-screen flex flex-col">
-        <div className="flex-1 flex gap-0 rounded-lg overflow-hidden border bg-card">
+        <div className="flex-1 flex flex-col gap-0 rounded-lg overflow-hidden border bg-card">
+        {/* Check Replies Header */}
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-card">
+          <h2 className="text-sm font-semibold text-foreground">Inbox</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => checkForReplies(false)}
+            disabled={checking}
+            className="gap-2 text-xs"
+          >
+            <RefreshCw className={`w-3 h-3 ${checking ? 'animate-spin' : ''}`} />
+            {checking ? 'Checking...' : 'Check Replies'}
+          </Button>
+        </div>
+        <div className="flex-1 flex gap-0 overflow-hidden">
           <ConversationList
             conversations={conversations}
             selectedConversation={selectedConversation}
@@ -157,6 +223,7 @@ export default function Inbox() {
             onSendMessage={handleSendMessage}
             sending={sending}
           />
+        </div>
         </div>
       </div>
     </DashboardLayout>

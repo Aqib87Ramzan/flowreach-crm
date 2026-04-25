@@ -3,7 +3,7 @@ export interface ErrorLog {
   lead_id: string;
   workflow_execution_id?: string;
   message_id?: string;
-  channel: 'sms' | 'email';
+  channel: 'email';
   error_type: 'send_failed' | 'validation_error' | 'provider_error';
   error_message: string;
   retry_count: number;
@@ -28,7 +28,7 @@ export interface AlertLog {
 export interface FailedMessage {
   lead_id: string;
   lead_name: string;
-  channel: 'sms' | 'email';
+  channel: 'email';
   error_reason: string;
   retry_attempts: number;
   created_at: string;

@@ -1,33 +1,53 @@
 # Supabase Environment Configuration
 
-Add this file at `supabase/.env.local` for local development:
+## SMTP Email Secrets (Required)
 
-```env
-TWILIO_ACCOUNT_SID=your_account_sid_here
-TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_PHONE=your_twilio_phone_number_here
+Set these secrets in your Supabase project for the `send-email` edge function to work:
+
+```bash
+npx supabase secrets set SMTP_HOSTNAME=smtp.gmail.com
+npx supabase secrets set SMTP_PORT=587
+npx supabase secrets set SMTP_USERNAME=your_email@gmail.com
+npx supabase secrets set SMTP_PASSWORD=your_app_password_here
+npx supabase secrets set SMTP_FROM_EMAIL=your_email@gmail.com
 ```
 
-Note: `.env.local` is ignored by Git for security. Only you need this locally.
+> **Gmail users:** Use an App Password (https://myaccount.google.com/apppasswords), NOT your regular password.
 
-## Getting Your Twilio Credentials
+## IMAP Reply Syncing (Auto-configured)
 
-1. Go to https://www.twilio.com/console
-2. Find your Account SID and Auth Token
-3. In Phone Numbers section, find your Twilio phone number
+The `check-inbox` edge function automatically derives the IMAP host from your SMTP host:
+- `smtp.gmail.com` → `imap.gmail.com`
+- `smtp.office365.com` → `outlook.office365.com`
+
+It reuses `SMTP_USERNAME` and `SMTP_PASSWORD` for IMAP authentication.
+
+If your IMAP server is different, set these optional overrides:
+
+```bash
+npx supabase secrets set IMAP_HOST=imap.gmail.com
+npx supabase secrets set IMAP_PORT=993
+```
+
+> **Gmail users:** Make sure IMAP is enabled in your Gmail settings:
+> Settings → See all settings → Forwarding and POP/IMAP → Enable IMAP
+
+## Deploy Edge Functions
+
+```bash
+npx supabase functions deploy send-email --project-ref zlilmhljwccilffppalp
+npx supabase functions deploy check-inbox --project-ref zlilmhljwccilffppalp
+npx supabase functions deploy webhook-lead --project-ref zlilmhljwccilffppalp
+npx supabase functions deploy webhook-email-inbound --project-ref zlilmhljwccilffppalp
+npx supabase functions deploy execute-workflow --project-ref zlilmhljwccilffppalp
+```
 
 ## Testing
 
-After configuring, test the SMS workflow:
+After configuring, test the email workflow:
 
-1. Send a POST request with lead data to your webhook
-2. Lead should appear in Inbox
-3. SMS should be automatically sent to the lead's phone
-4. Message record created in the database
-
-## Verification
-
-To verify Twilio is working:
-- Check Supabase function logs for SMS sending
-- Check Twilio console for outgoing messages
-- Verify message status in your Inbox table
+1. Send a POST request with lead data to your webhook URL
+2. Lead should appear in the Leads page
+3. Email should be automatically sent to the lead's email
+4. Message record created in the Inbox
+5. When the lead replies, click "Check Replies" in Inbox or wait 60s for auto-sync

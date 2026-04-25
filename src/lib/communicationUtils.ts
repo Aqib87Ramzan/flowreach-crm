@@ -2,35 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 /**
- * Send SMS through Supabase function
- */
-export async function sendSMS(
-  phone: string,
-  message: string,
-  leadId?: string,
-  executionId?: string
-): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.functions.invoke('send-sms', {
-      body: {
-        phone,
-        message,
-        lead_id: leadId,
-        execution_id: executionId,
-      },
-    });
-
-    if (error) throw error;
-    return true;
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Failed to send SMS';
-    toast.error(errorMsg);
-    console.error('SMS send error:', err);
-    return false;
-  }
-}
-
-/**
  * Send Email through Supabase function
  */
 export async function sendEmail(
@@ -66,9 +37,9 @@ export async function sendEmail(
  */
 export async function createMessageRecord(
   leadId: string,
-  messageType: 'sms' | 'email',
+  messageType: 'email',
   direction: 'inbound' | 'outbound',
-  channel: 'sms' | 'email',
+  channel: 'email',
   content: string,
   options?: {
     subject?: string;

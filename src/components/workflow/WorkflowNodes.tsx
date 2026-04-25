@@ -7,9 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 const nodeStyles = {
   base: 'px-4 py-3 rounded-lg border-2 bg-card shadow-lg min-w-[200px]',
   trigger: 'border-primary bg-primary/10',
-  sms: 'border-success bg-success/10',
   email: 'border-warning bg-warning/10',
-  whatsapp: 'border-green-500 bg-green-500/10',
   wait: 'border-muted bg-muted/20',
   condition: 'border-destructive bg-destructive/10',
   task: 'border-blue-500 bg-blue-500/10',

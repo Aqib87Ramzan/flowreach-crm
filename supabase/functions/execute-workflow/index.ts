@@ -93,9 +93,6 @@ serve(async (req) => {
           if (node.type === "trigger") {
             // Skip trigger
             continue;
-          } else if (node.type === "sms") {
-            // Execute SMS
-            await executeSMSNode(supabase, node, triggerData.lead_id, execution.id);
           } else if (node.type === "email") {
             // Execute Email
             await executeEmailNode(supabase, node, triggerData.lead_id, execution.id);
@@ -180,53 +177,6 @@ function buildExecutionPath(nodes: any[], edges: any[], startNodeId: string): st
   return path;
 }
 
-async function executeSMSNode(
-  supabase: any,
-  node: any,
-  leadId: string,
-  executionId: string
-): Promise<void> {
-  try {
-    const { data: lead, error: leadError } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("id", leadId)
-      .single();
-
-    if (leadError || !lead) throw new Error("Lead not found");
-    if (!lead.phone) throw new Error("Lead has no phone number");
-
-    const message =
-      node.data?.message ||
-      `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
-
-    // Call send-sms function
-    const response = await fetch(
-      new URL("../send-sms", import.meta.url).toString(),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: lead.phone,
-          message,
-          lead_id: leadId,
-          execution_id: executionId,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`SMS sending failed: ${response.statusText}`);
-    }
-
-    console.log(`SMS sent to ${lead.phone}`);
-  } catch (error) {
-    console.error("SMS execution error:", error);
-    throw error;
-  }
-}
 
 async function executeEmailNode(
   supabase: any,

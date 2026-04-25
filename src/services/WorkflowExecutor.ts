@@ -107,9 +107,6 @@ export class WorkflowExecutor {
           case 'trigger':
             // Already triggered, skip
             break;
-          case 'sms':
-            await this.executeSMSNode(node, leadId, executionId);
-            break;
           case 'email':
             await this.executeEmailNode(node, leadId, executionId);
             break;
@@ -124,7 +121,7 @@ export class WorkflowExecutor {
                 lead_id: leadId,
                 workflow_execution_id: executionId,
                 step: 'check_reply',
-                channel: 'sms',
+                channel: 'email',
                 status: 'completed',
                 action_data: { result: 'lead_replied', action: 'stop_workflow' },
               });
@@ -135,7 +132,7 @@ export class WorkflowExecutor {
               lead_id: leadId,
               workflow_execution_id: executionId,
               step: 'check_reply',
-              channel: 'sms',
+              channel: 'email',
               status: 'completed',
               action_data: { result: 'no_reply', action: 'continue' },
             });
@@ -180,39 +177,6 @@ export class WorkflowExecutor {
     }
 
     return path;
-  }
-
-  private async executeSMSNode(node: Node, leadId: string, executionId: string): Promise<void> {
-    const { data: lead, error: leadError } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('id', leadId)
-      .single();
-
-    if (leadError || !lead) throw new Error('Lead not found');
-    if (!lead.phone) throw new Error('Lead has no phone number');
-
-    const message = node.data.message || `Hi ${lead.name}, thanks for your interest! We'd love to help you. Reply to this message to get started.`;
-
-    const { error } = await supabase.functions.invoke('send-sms', {
-      body: {
-        phone: lead.phone,
-        message,
-        lead_id: leadId,
-        execution_id: executionId,
-      },
-    });
-
-    if (error) throw error;
-
-    await this.logCommunication({
-      lead_id: leadId,
-      workflow_execution_id: executionId,
-      step: 'initial_contact',
-      channel: 'sms',
-      status: 'completed',
-      action_data: { phone: lead.phone, message },
-    });
   }
 
   private async executeEmailNode(node: Node, leadId: string, executionId: string): Promise<void> {
@@ -261,7 +225,7 @@ export class WorkflowExecutor {
       lead_id: leadId,
       workflow_execution_id: executionId,
       step: 'wait_period',
-      channel: 'sms',
+      channel: 'email',
       status: 'in_progress',
       action_data: { wait_hours: hours, actual_wait_ms: actualWaitMs },
     });
@@ -272,7 +236,7 @@ export class WorkflowExecutor {
           lead_id: leadId,
           workflow_execution_id: executionId,
           step: 'wait_period',
-          channel: 'sms',
+          channel: 'email',
           status: 'completed',
         });
         resolve();
@@ -331,7 +295,7 @@ export class WorkflowExecutor {
       lead_id: leadId,
       workflow_execution_id: executionId,
       step: 'create_task',
-      channel: 'sms',
+      channel: 'email',
       status: 'completed',
       action_data: { task_type: 'call', title: `Call ${leadName}` },
     });
@@ -351,7 +315,7 @@ export class WorkflowExecutor {
         lead_id: data.lead_id,
         workflow_execution_id: data.workflow_execution_id,
         step: data.step || 'initial_contact',
-        channel: data.channel || 'sms',
+        channel: data.channel || 'email',
         status: data.status || 'pending',
         action_data: data.action_data,
         error_message: data.error_message,

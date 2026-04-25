@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   Users,
-  MessageSquare,
   Mail,
   Megaphone,
   Copy,
   Zap,
   AlertCircle,
   CheckCircle2,
-  MessageCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -57,7 +55,6 @@ export default function Dashboard() {
     failedMessages: 0,
     pendingTasks: 0,
     totalConversations: 0,
-    smsSent: 0,
     emailsSent: 0,
   });
   const [failedMessages, setFailedMessages] = useState<FailedMessage[]>([]);
@@ -80,7 +77,6 @@ export default function Dashboard() {
         leadsCountRes,
         activeCountRes,
         tasksCountRes,
-        smsCountRes,
         emailCountRes,
         uniqueLeadsRes,
         recentLeadsRes,
@@ -90,7 +86,6 @@ export default function Dashboard() {
         supabase.from('leads').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('workflows').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_active', true),
         supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'pending'),
-        supabase.from('messages').select('*', { count: 'exact', head: true }).eq('message_type', 'sms').eq('direction', 'outbound'),
         supabase.from('messages').select('*', { count: 'exact', head: true }).eq('message_type', 'email').eq('direction', 'outbound'),
         supabase.from('messages').select('lead_id').neq('lead_id', null as any),
         supabase.from('leads').select('id, name, email, phone, status, date_added').eq('user_id', user.id).order('date_added', { ascending: false }).limit(5),
@@ -113,7 +108,6 @@ export default function Dashboard() {
         failedMessages: failedCount,
         pendingTasks: tasksCountRes.count || 0,
         totalConversations: uniqueLeadCount,
-        smsSent: smsCountRes.count || 0,
         emailsSent: emailCountRes.count || 0,
       });
 

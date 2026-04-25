@@ -4,15 +4,15 @@ export interface Message {
   id: string;
   lead_id: string;
   workflow_execution_id?: string;
-  message_type: 'sms' | 'email';
+  message_type: 'email';
   direction: 'inbound' | 'outbound';
-  channel: 'sms' | 'email';
+  channel: 'email';
   content: string;
   sender_id?: string;
   recipient_email?: string;
   recipient_phone?: string;
   subject?: string;
-  status: 'sent' | 'delivered' | 'failed' | 'read';
+  status: 'sent' | 'delivered' | 'failed' | 'read' | 'received';
   read_at?: string;
   created_at: string;
   updated_at: string;
@@ -23,7 +23,7 @@ export interface CommunicationLog {
   lead_id: string;
   workflow_execution_id?: string;
   step: 'initial_contact' | 'wait_period' | 'check_reply' | 'follow_up' | 'create_task';
-  channel: 'sms' | 'email';
+  channel: 'email';
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   action_data?: Record<string, any>;
   error_message?: string;

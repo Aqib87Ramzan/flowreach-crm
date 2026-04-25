@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.101.1";
+import nodemailer from "npm:nodemailer";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -262,34 +263,65 @@ async function executeEmailNode(
       node.data?.message ||
       `Hi ${lead.name}, thanks for reaching out! We're excited to work with you.`;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const subject = node.data?.subject || "Message from FlowReach";
+    const htmlContent = `<p>${message}</p>`;
 
-    const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
+    // Send email directly via SMTP (avoids function-to-function auth issues)
+    const SMTP_HOSTNAME = Deno.env.get("SMTP_HOSTNAME");
+    const SMTP_PORT = Deno.env.get("SMTP_PORT");
+    const SMTP_USERNAME = Deno.env.get("SMTP_USERNAME");
+    const SMTP_PASSWORD = Deno.env.get("SMTP_PASSWORD");
+    const SMTP_FROM_EMAIL = Deno.env.get("SMTP_FROM_EMAIL");
 
-    const response = await fetch(sendEmailUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({
-        to: lead.email,
-        subject: node.data?.subject || "Message from FlowReach",
-        html: `<p>${message}</p>`,
-        lead_id: leadId,
-        execution_id: executionId,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Email function error: ${response.status} - ${errorText}`);
-      throw new Error(`Email function failed: ${response.status}`);
+    if (!SMTP_HOSTNAME || !SMTP_PORT || !SMTP_USERNAME || !SMTP_PASSWORD || !SMTP_FROM_EMAIL) {
+      throw new Error("SMTP credentials are not properly configured in secrets");
     }
 
-    // Note: send-email function handles creating the message record
-    console.log(`Email successfully forwarded to send-email function for ${lead.email}`);
+    const portNumber = parseInt(SMTP_PORT);
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOSTNAME,
+      port: portNumber,
+      secure: portNumber === 465,
+      auth: {
+        user: SMTP_USERNAME,
+        pass: SMTP_PASSWORD,
+      },
+    });
+
+    console.log(`Sending email to ${lead.email}...`);
+    const info = await transporter.sendMail({
+      from: SMTP_FROM_EMAIL,
+      to: lead.email,
+      subject: subject,
+      text: "Please view this email in a client that supports HTML.",
+      html: htmlContent,
+    });
+
+    console.log(`Email sent successfully to ${lead.email}!`, info.messageId);
+
+    // Save message record to database
+    const { error: msgError } = await supabase.from("messages").insert([{
+      lead_id: leadId,
+      workflow_execution_id: executionId || null,
+      message_type: "email",
+      direction: "outbound",
+      channel: "email",
+      content: htmlContent,
+      subject,
+      recipient_email: lead.email,
+      status: "sent",
+    }]);
+
+    if (msgError) {
+      console.error("Failed to insert message record:", msgError);
+    }
+
+    // Increment lead score
+    const { data: leadData } = await supabase.from('leads').select('score').eq('id', leadId).single();
+    if (leadData) {
+      const newScore = (leadData.score || 0) + 5;
+      await supabase.from('leads').update({ score: newScore }).eq('id', leadId);
+    }
   } catch (error) {
     console.error("Email execution error:", error);
     throw error;

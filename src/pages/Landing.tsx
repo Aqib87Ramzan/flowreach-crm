@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Users, MessageSquare, Mail, BarChart3 } from 'lucide-react';
+import { ArrowRight, Users, Mail, BarChart3, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
 const features = [
   { icon: Users, title: 'Lead Management', desc: 'Organize and track all your leads in one place' },
   { icon: Mail, title: 'Email Campaigns', desc: 'Send personalized email outreach at scale' },
-  { icon: MessageSquare, title: 'Inbox Conversations', desc: 'Manage all lead replies in a unified inbox' },
+  { icon: MessageCircle, title: 'Inbox Conversations', desc: 'Manage all lead replies in a unified inbox' },
   { icon: BarChart3, title: 'Analytics', desc: 'Track performance with real-time dashboards' },
 ];
 
@@ -49,7 +49,7 @@ export default function Landing() {
           The CRM that helps you <span className="text-primary">close more deals</span>
         </h2>
         <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-          Manage leads, send SMS & email campaigns, and grow your business — all from one simple platform.
+          Manage leads, send email campaigns, and grow your business — all from one simple platform.
         </p>
         <div className="mt-10 flex gap-4 justify-center">
           <Button size="lg" onClick={() => navigate('/register')}>

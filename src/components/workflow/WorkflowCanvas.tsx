@@ -71,7 +71,6 @@ export function WorkflowCanvas({ workflow, onSave }: WorkflowCanvasProps) {
 
       const nodeLabel = {
         trigger: 'New Lead (Webhook)',
-        sms: 'Send SMS',
         email: 'Send Email',
         wait: 'Wait 5 minutes',
         condition: 'If/Then',

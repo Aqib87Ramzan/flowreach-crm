@@ -142,9 +142,6 @@ export function MessageThread({
     );
   }
 
-  // Determine last channel used
-  const lastMessage = conversation.messages[0];
-  const lastChannelUsed = lastMessage?.channel || 'sms';
 
   return (
     <div className="flex-1 flex flex-col bg-background">
@@ -234,7 +231,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <Mail className="w-3 h-3" />
             <span>{new Date(message.created_at).toLocaleTimeString()}</span>
             {message.status === 'failed' && (
-              <span className="text-red-300 font-bold ml-2">Failed (Check logs or Meta 24hr rule)</span>
+              <span className="text-red-300 font-bold ml-2">Failed to deliver</span>
             )}
           </div>
         </div>

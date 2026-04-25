@@ -9,14 +9,6 @@ export interface Lead {
   dateAdded: string;
 }
 
-export interface SMSRecord {
-  id: string;
-  leadName: string;
-  message: string;
-  status: 'Sent' | 'Failed' | 'Pending';
-  timeSent: string;
-}
-
 export interface EmailRecord {
   id: string;
   leadName: string;
@@ -26,7 +18,6 @@ export interface EmailRecord {
 }
 
 const LEADS_KEY = 'flowreach_leads';
-const SMS_KEY = 'flowreach_sms';
 const EMAIL_KEY = 'flowreach_emails';
 const AUTH_KEY = 'flowreach_auth';
 
@@ -39,12 +30,6 @@ const defaultLeads: Lead[] = [
   { id: '6', name: 'Zainab Iqbal', email: 'zainab.iqbal@example.pk', phone: '+92 301 7654321', source: 'Google Ads', status: 'Contacted', notes: 'Price sensitive', dateAdded: '2026-03-23' },
   { id: '7', name: 'Bilal Shahid', email: 'bilal.shahid@example.pk', phone: '+92 322 8901234', source: 'Instagram', status: 'New', notes: 'Found through influencer campaign', dateAdded: '2026-03-22' },
   { id: '8', name: 'Sana Noor', email: 'sana.noor@example.pk', phone: '+92 334 5678901', source: 'Referral', status: 'Replied', notes: 'Referred by Ayesha Malik', dateAdded: '2026-03-21' },
-];
-
-const defaultSMS: SMSRecord[] = [
-  { id: '1', leadName: 'Ahmed Raza', message: 'Hi Ahmed! Thanks for your interest in FlowReach.', status: 'Sent', timeSent: '2026-03-28 10:30' },
-  { id: '2', leadName: 'Fatima Khan', message: 'Hi Fatima, just following up on our conversation.', status: 'Sent', timeSent: '2026-03-27 14:15' },
-  { id: '3', leadName: 'Ali Hassan', message: 'Ali, your demo is scheduled for tomorrow!', status: 'Sent', timeSent: '2026-03-26 09:00' },
 ];
 
 const defaultEmails: EmailRecord[] = [
@@ -85,18 +70,6 @@ export function addLead(lead: Omit<Lead, 'id' | 'dateAdded'>): Lead {
 export function deleteLead(id: string) {
   const leads = getLeads().filter(l => l.id !== id);
   saveToStorage(LEADS_KEY, leads);
-}
-
-export function getSMSHistory(): SMSRecord[] {
-  return getFromStorage(SMS_KEY, defaultSMS);
-}
-
-export function addSMS(record: Omit<SMSRecord, 'id'>): SMSRecord {
-  const records = getSMSHistory();
-  const newRecord: SMSRecord = { ...record, id: Date.now().toString() };
-  records.unshift(newRecord);
-  saveToStorage(SMS_KEY, records);
-  return newRecord;
 }
 
 export function getEmailHistory(): EmailRecord[] {
